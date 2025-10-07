@@ -24,7 +24,7 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('chat');
   const [selectedAgentType, setSelectedAgentType] = useState<AgentType>('triage');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { servers: mcpServers, addHostedOdeabank, disconnectServer } = useMcp();
+  const { servers: mcpServers, addServer, disconnectServer } = useMcp();
   // Simple SPA routing without external deps
   const mapViewToPath = (view: ViewType): string => {
     switch (view) {
@@ -82,18 +82,20 @@ function App() {
   ];
 
   const agentTypes: { type: AgentType; name: string; description: string }[] = [
-    { type: 'triage', name: 'Triage Agent', description: 'Routes to specialists' },
-    { type: 'planner', name: 'Research Planner', description: 'Creates research plans' },
-    { type: 'search', name: 'Search Specialist', description: 'Gathers information' },
-    { type: 'writer', name: 'Report Writer', description: 'Creates reports' },
-    { type: 'customer-service', name: 'Customer Service', description: 'Handles support' },
+    { type: 'triage', name: 'AiCoE Assistant', description: 'AI-powered intelligent assistant' },
+    { type: 'planner', name: 'AiCoE Planner', description: 'Research and planning specialist' },
+    { type: 'search', name: 'AiCoE Search', description: 'Information gathering expert' },
+    { type: 'writer', name: 'AiCoE Writer', description: 'Content creation specialist' },
+    { type: 'customer-service', name: 'AiCoE Support', description: 'Customer service expert' },
   ];
 
   const handleMCPServerAction = (action: string, ...args: any[]) => {
     switch (action) {
-      case 'add':
-        addHostedOdeabank();
+      case 'add': {
+        const config = args[0];
+        if (config) addServer(config);
         break;
+      }
       case 'delete': {
         const serverId = args[0] as string | undefined;
         if (serverId) disconnectServer(serverId);
@@ -216,10 +218,14 @@ function App() {
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <Bot className="w-8 h-8 text-primary-600" />
+              <img
+                src="/aicoe.jpeg"
+                alt="AiCoE"
+                className="w-10 h-10 rounded-lg object-contain bg-white"
+              />
               <div>
-                <h1 className="font-bold text-gray-900">Agent Platform</h1>
-                <p className="text-xs text-gray-600">Multi-Agent System</p>
+                <h1 className="font-bold text-gray-900">AiCoE</h1>
+                <p className="text-xs text-gray-600">AI Center of Excellence</p>
               </div>
             </div>
             <button
@@ -275,8 +281,15 @@ function App() {
 
           {/* Footer */}
           <div className="p-4 border-t border-gray-200">
-            <div className="text-xs text-gray-500 text-center">
-              OpenAI Agents SDK v0.1.9
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src="/ibtech.jpeg"
+                alt="IBTech"
+                className="h-6 object-contain"
+              />
+              <div className="text-xs text-gray-500 text-center">
+                OpenAI Agents SDK v0.1.9
+              </div>
             </div>
           </div>
         </div>
@@ -294,8 +307,8 @@ function App() {
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2">
-              <Bot className="w-6 h-6 text-primary-600" />
-              <span className="font-semibold text-gray-900">Agent Platform</span>
+              <img src="/aicoe.jpeg" alt="AiCoE" className="w-6 h-6 rounded object-contain" />
+              <span className="font-semibold text-gray-900">AiCoE</span>
             </div>
             <div></div>
           </div>

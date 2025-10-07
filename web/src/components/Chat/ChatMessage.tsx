@@ -2,6 +2,8 @@ import React from 'react';
 import { Bot, User, Clock, CheckCircle, AlertCircle, Wrench } from 'lucide-react';
 import { Message, AgentType } from '../../types/agent';
 import { clsx } from 'clsx';
+import { ToolCallDisplay } from './ToolCallDisplay';
+import { ThinkingIndicator } from './ThinkingIndicator';
 
 interface ChatMessageProps {
   message: Message;
@@ -52,10 +54,21 @@ const TypingIndicator: React.FC = () => (
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming = false }) => {
   const isUser = message.type === 'user';
   const isSystem = message.type === 'system';
-  const toolCalls: any[] = (message.metadata as any)?.toolCalls || [];
-  const hasTools = Array.isArray(toolCalls) && toolCalls.length > 0;
-  const toolNames = hasTools ? toolCalls.map((t: any) => t.toolName || 'tool').slice(0, 2).join(', ') + (toolCalls.length > 2 ? ` +${toolCalls.length - 2}` : '') : '';
-  
+  const isThinking = message.type === 'thinking';
+  const isTool = message.type === 'tool';
+
+  // Get tool calls from message (new structure)
+  // Filter out internal tool calls that shouldn't be shown to users
+  const internalTools = ['mcp_list_tools', 'unknown_tool'];
+  const toolCalls = (message.toolCalls || []).filter(
+    tc => !internalTools.includes(tc.toolName)
+  );
+  const hasTools = toolCalls.length > 0;
+
+  // Get thinking steps
+  const thinkingSteps = message.thinkingSteps || [];
+  const isThinkingActive = isThinking || (isStreaming && thinkingSteps.length > 0);
+
   // Safely format timestamp
   const formatTime = (timestamp: Date | string | number) => {
     try {
@@ -65,6 +78,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
       return 'Invalid time';
     }
   };
+
+  // If this is just a thinking message, show thinking indicator
+  if (isThinking) {
+    return (
+      <div className="max-w-4xl mr-auto mb-6">
+        <ThinkingIndicator steps={thinkingSteps} isActive={isStreaming} />
+      </div>
+    );
+  }
 
   if (isSystem) {
     return (
@@ -105,7 +127,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
       )}>
         {/* Agent name and timestamp */}
         {!isUser && (
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="font-medium text-sm text-gray-700">
               {message.agentName || 'Assistant'}
             </span>
@@ -123,7 +145,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
             {hasTools && (
               <span className="badge text-xs badge-success flex items-center gap-1">
                 <Wrench className="w-3 h-3" />
-                Tool: {toolNames}
+                {toolCalls.length} tool{toolCalls.length > 1 ? 's' : ''}
               </span>
             )}
             <Clock className="w-3 h-3 text-gray-400" />
@@ -183,31 +205,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
           </div>
         )}
 
-          {/* Tool calls (expandable) */}
+        {/* Thinking steps if present */}
+        {thinkingSteps.length > 0 && (
+          <div className="mt-3">
+            <ThinkingIndicator steps={thinkingSteps} isActive={false} />
+          </div>
+        )}
+
+        {/* Tool calls (new collapsible display) */}
         {hasTools && (
-          <div className="mt-2 p-2 bg-gray-50 rounded-lg text-xs text-gray-700">
-            <details>
-              <summary className="cursor-pointer font-medium">Tool kullanımları ({toolCalls.length})</summary>
-              <div className="mt-2 space-y-2">
-                {toolCalls.map((tc, idx) => (
-                  <details key={idx} className="border rounded-md p-2 bg-white">
-                    <summary className="cursor-pointer font-medium">
-                      {tc.toolName || 'tool'}
-                    </summary>
-                    <div className="mt-2">
-                      <div className="font-semibold mb-1">Tool çıktısı</div>
-                      <pre className="whitespace-pre-wrap text-gray-800">
-                        {typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result, null, 2)}
-                      </pre>
-                      <div className="font-semibold mt-2 mb-1">LLM yorumu</div>
-                      <pre className="whitespace-pre-wrap text-gray-800">
-                        {typeof message.content === 'string' ? message.content : JSON.stringify(message.content, null, 2)}
-                      </pre>
-                    </div>
-                  </details>
-                ))}
-              </div>
-            </details>
+          <div className="mt-3 space-y-2">
+            {toolCalls.map((toolCall) => (
+              <ToolCallDisplay key={toolCall.id} toolCall={toolCall} />
+            ))}
           </div>
         )}
       </div>

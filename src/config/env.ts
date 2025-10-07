@@ -14,7 +14,6 @@ const envSchema = z.object({
   ENABLE_TRACING: z.coerce.boolean().default(true),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   MCP_FILESYSTEM_PATH: z.string().default('./sample_files'),
-  ODEABANK_MCP_URL: z.string().default('https://mcp.cloud.odeabank.com.tr/mcp/sse'),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ibtech-agent-backend
+  namespace: ibtech-agent
+  labels:
+    app: ibtech-agent-backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: ibtech-agent-backend
+  sessionAffinity: ClientIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ibtech-agent-frontend
+  namespace: ibtech-agent
+  labels:
+    app: ibtech-agent-frontend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: ibtech-agent-frontend
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: ibtech-agent
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    protocol: TCP
+    name: redis
+  selector:
+    app: redis
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: ibtech-agent
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgres
+  selector:
+    app: postgres
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ibtech-agent-ingress
+  namespace: ibtech-agent
+  labels:
+    app: ibtech-agent
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  - port: 443
+    targetPort: 443
+    protocol: TCP
+    name: https
+  selector:
+    app: nginx-ingress

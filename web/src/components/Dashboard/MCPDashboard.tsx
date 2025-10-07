@@ -260,13 +260,20 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
         open={formOpen}
         onClose={() => setFormOpen(false)}
         onSubmit={async (vals: McpFormValues) => {
-          await fetch('/api/mcp/config', {
+          const response = await fetch('/api/mcp/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(vals)
           });
-          onAddServer?.();
-          setFormOpen(false);
+
+          if (response.ok) {
+            // Reload servers after successful addition
+            await onRefreshAll?.();
+            setFormOpen(false);
+          } else {
+            const error = await response.json().catch(() => ({ error: 'Failed to add server' }));
+            alert(error.error || 'Failed to add MCP server');
+          }
         }}
       />
 

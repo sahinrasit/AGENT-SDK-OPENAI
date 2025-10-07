@@ -18,7 +18,7 @@ interface MCPServerFormProps {
 }
 
 export const MCPServerForm: React.FC<MCPServerFormProps> = ({ open, onClose, onSubmit }) => {
-  const [values, setValues] = useState<McpFormValues>({ type: 'hosted', name: 'odeabank', serverLabel: 'odeabank', serverUrl: 'https://mcp.cloud.odeabank.com.tr/mcp/sse' });
+  const [values, setValues] = useState<McpFormValues>({ type: 'hosted', name: '', serverLabel: '', serverUrl: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +74,7 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({ open, onClose, onS
               className="input w-full"
               value={values.name}
               onChange={(e) => setValues(v => ({ ...v, name: e.target.value }))}
-              placeholder="odeabank"
+              placeholder="my-mcp-server"
               required
             />
           </div>
@@ -87,7 +87,7 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({ open, onClose, onS
                   className="input w-full"
                   value={values.serverLabel || ''}
                   onChange={(e) => setValues(v => ({ ...v, serverLabel: e.target.value }))}
-                  placeholder="odeabank"
+                  placeholder="my-server-label"
                   required
                 />
               </div>

@@ -4,7 +4,9 @@
       "WebFetch(domain:openai.github.io)",
       "WebFetch(domain:github.com)",
       "Bash(pnpm:*)",
-      "Bash(npx tailwindcss init:*)"
+      "Bash(npx tailwindcss init:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

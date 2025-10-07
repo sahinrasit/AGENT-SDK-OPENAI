@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from './useSocket';
-import { Message, ChatSession, AgentType, AgentResponse } from '../types/agent';
+import { Message, ChatSession, AgentType, AgentResponse, ToolCall } from '../types/agent';
+import { useChatPersistence } from './useChatPersistence';
 
 interface UseChatOptions {
   sessionId?: string;
@@ -16,6 +17,9 @@ export const useChat = (options: UseChatOptions) => {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Chat persistence hook
+  const { saveSession, loadSession } = useChatPersistence();
 
   const {
     isConnected,
@@ -53,6 +57,29 @@ export const useChat = (options: UseChatOptions) => {
       emit('session:create', { agentType });
     }
   }, [isConnected, initialSessionId, agentType]);
+
+  // Load session from localStorage on mount
+  useEffect(() => {
+    if (initialSessionId) {
+      const loaded = loadSession(initialSessionId);
+      if (loaded) {
+        setSession(loaded);
+        setMessages(loaded.messages);
+      }
+    }
+  }, [initialSessionId, loadSession]);
+
+  // Save session to localStorage whenever it changes
+  useEffect(() => {
+    if (session && messages.length > 0) {
+      const updatedSession = {
+        ...session,
+        messages,
+        lastActivity: new Date()
+      };
+      saveSession(updatedSession);
+    }
+  }, [session, messages, saveSession]);
 
   // Set up event listeners
   useEffect(() => {
@@ -140,6 +167,93 @@ export const useChat = (options: UseChatOptions) => {
       }
     };
 
+    const handleAgentThinking = (data: { messageId: string; step: string }) => {
+      const { messageId, step } = data;
+
+      setMessages(prev => {
+        const existingIndex = prev.findIndex(m => m.id === messageId);
+
+        if (existingIndex >= 0) {
+          // Add thinking step to existing thinking message
+          const updated = [...prev];
+          const thinkingSteps = updated[existingIndex].thinkingSteps || [];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            thinkingSteps: [...thinkingSteps, step]
+          };
+          return updated;
+        } else {
+          // Create new thinking message
+          const thinkingMessage: Message = {
+            id: messageId,
+            type: 'thinking',
+            content: '',
+            timestamp: new Date(),
+            agentType,
+            thinkingSteps: [step],
+            isStreaming: true
+          };
+          return [...prev, thinkingMessage];
+        }
+      });
+    };
+
+    const handleToolCallStart = (data: { messageId: string; toolCall: ToolCall }) => {
+      const { messageId, toolCall } = data;
+
+      setMessages(prev => {
+        const existingIndex = prev.findIndex(m => m.id === messageId);
+
+        if (existingIndex >= 0) {
+          // Add tool call to existing message
+          const updated = [...prev];
+          const toolCalls = updated[existingIndex].toolCalls || [];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            toolCalls: [...toolCalls, toolCall]
+          };
+          return updated;
+        } else {
+          // Create message with tool call
+          const newMessage: Message = {
+            id: messageId,
+            type: 'agent',
+            content: '',
+            timestamp: new Date(),
+            agentType,
+            toolCalls: [toolCall],
+            isStreaming: true
+          };
+          return [...prev, newMessage];
+        }
+      });
+    };
+
+    const handleToolCallComplete = (data: { messageId: string; toolCall: ToolCall }) => {
+      const { messageId, toolCall } = data;
+
+      setMessages(prev => {
+        const updated = [...prev];
+        const messageIndex = updated.findIndex(m => m.id === messageId);
+
+        if (messageIndex >= 0) {
+          const toolCalls = updated[messageIndex].toolCalls || [];
+          const toolCallIndex = toolCalls.findIndex(tc => tc.id === toolCall.id);
+
+          if (toolCallIndex >= 0) {
+            // Update existing tool call
+            toolCalls[toolCallIndex] = toolCall;
+            updated[messageIndex] = {
+              ...updated[messageIndex],
+              toolCalls: [...toolCalls]
+            };
+          }
+        }
+
+        return updated;
+      });
+    };
+
     const handleError = (error: { message: string; code?: string }) => {
       setError(error.message);
       setIsLoading(false);
@@ -150,6 +264,9 @@ export const useChat = (options: UseChatOptions) => {
     on('session:created', handleSessionCreated);
     on('message:received', handleMessageReceived);
     on('message:streaming', handleMessageStreaming);
+    on('agent:thinking', handleAgentThinking);
+    on('tool:call:start', handleToolCallStart);
+    on('tool:call:complete', handleToolCallComplete);
     on('error', handleError);
 
     // Cleanup
@@ -157,6 +274,9 @@ export const useChat = (options: UseChatOptions) => {
       off('session:created', handleSessionCreated);
       off('message:received', handleMessageReceived);
       off('message:streaming', handleMessageStreaming);
+      off('agent:thinking', handleAgentThinking);
+      off('tool:call:start', handleToolCallStart);
+      off('tool:call:complete', handleToolCallComplete);
       off('error', handleError);
     };
   }, [isConnected, agentType, on, off]);

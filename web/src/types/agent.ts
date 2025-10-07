@@ -1,14 +1,27 @@
 // Types for the agent interface
 
+export interface ToolCall {
+  id: string;
+  toolName: string;
+  parameters: Record<string, any>;
+  result?: any;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  startTime: Date;
+  endTime?: Date;
+  error?: string;
+}
+
 export interface Message {
   id: string;
-  type: 'user' | 'agent' | 'system';
+  type: 'user' | 'agent' | 'system' | 'tool' | 'thinking';
   content: string;
   timestamp: Date;
   agentName?: string;
   agentType?: AgentType;
   metadata?: Record<string, any>;
   isStreaming?: boolean;
+  toolCalls?: ToolCall[];
+  thinkingSteps?: string[];
 }
 
 export interface StreamingMessage extends Message {
@@ -114,6 +127,10 @@ export interface SocketEvents {
   // Server to client
   'message:received': (message: Message) => void;
   'message:streaming': (data: { messageId: string; chunk: string; isComplete: boolean }) => void;
+  'agent:thinking': (data: { messageId: string; step: string }) => void;
+  'tool:call:start': (data: { messageId: string; toolCall: ToolCall }) => void;
+  'tool:call:complete': (data: { messageId: string; toolCall: ToolCall }) => void;
+  'mcp:tools:list': (data: { serverId: string; tools: MCPTool[] }) => void;
   'agent:status': (data: { agentId: string; status: string }) => void;
   'research:progress': (data: { sessionId: string; phase: string; progress: number }) => void;
   'handoff:completed': (handoff: HandoffEvent) => void;

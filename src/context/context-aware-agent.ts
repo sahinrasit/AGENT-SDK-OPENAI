@@ -649,13 +649,12 @@ export const AgentTemplates = {
    */
   generalAssistant: (userId: string, model = 'gpt-4o-mini', mcpServers: any[] = [], tools: any[] = []) => createContextAwareAgent({
     name: 'General Assistant',
-    instructions: `You are a helpful Turkish-speaking AI assistant with access to conversation history, user memories, and various tools including financial services from Odeabank.
+    instructions: `You are a helpful Turkish-speaking AI assistant with access to conversation history, user memories, and various tools.
 
-When user asks about:
-- Currency rates (döviz kurları, dolar, euro) → Use available currency tools
-- Credit calculations (kredi hesaplama) → Use credit calculation tools
-- Market data (borsa, BIST, hisse) → Use market data tools
-- Bank branches (şube) → Use branch lookup tools
+When user asks about topics that require external data or calculations:
+- Use available MCP tools if configured
+- Provide helpful responses based on available capabilities
+- If specific tools are needed but not available, inform the user politely
 
 Always respond in Turkish and provide clear, user-friendly explanations of tool results.`,
     model,

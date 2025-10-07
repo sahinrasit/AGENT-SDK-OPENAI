@@ -74,48 +74,48 @@ export class WebSocketServer {
 
   private async initializeMcpServers() {
     try {
-      // Load from mcp.json if present
+      // Load MCP servers from mcp.json configuration file
       const configs = await this.readMcpConfig();
-      if (configs.length > 0) {
-        for (const cfg of configs) {
-          try {
-            if (cfg.type === 'http') {
-              const httpServer = new MCPServerStreamableHttp({ url: cfg.url!, name: cfg.name });
-              await httpServer.connect();
-              this.mcpServers.push(httpServer);
-              logger.info(`✅ MCP(HTTP) initialized: ${cfg.name}`);
-            } else if (cfg.type === 'hosted') {
-              const hosted = hostedMcpTool({ serverLabel: cfg.serverLabel || cfg.name, serverUrl: cfg.serverUrl || cfg.url! });
-              this.mcpTools.push(hosted);
-              logger.info(`✅ MCP(Hosted) initialized: ${cfg.name}`);
-            } else {
-              logger.warn(`⚠️ Unsupported MCP type in mcp.json: ${cfg.type}`);
-            }
-          } catch (e) {
-            logger.warn(`⚠️ MCP init failed for ${cfg.name}:`, e);
-          }
-        }
+
+      if (configs.length === 0) {
+        logger.info('📋 No MCP servers configured in mcp.json');
+        logger.info('   Add MCP servers via the web UI or by editing mcp.json');
         return;
       }
 
-      // Fallback: Odeabank via env
-      if (env.ODEABANK_MCP_URL) {
-        const odeabankHttp = new MCPServerStreamableHttp({
-          url: env.ODEABANK_MCP_URL,
-          name: 'odeabank'
-        });
-        await odeabankHttp.connect();
-        this.mcpServers.push(odeabankHttp);
-        logger.info(`✅ Odeabank MCP Server initialized (HTTP)`);
-        logger.info(`   URL: ${env.ODEABANK_MCP_URL}`);
+      logger.info(`📋 Loading ${configs.length} MCP server(s) from mcp.json...`);
+
+      for (const cfg of configs) {
+        try {
+          if (cfg.type === 'http') {
+            const httpServer = new MCPServerStreamableHttp({
+              url: cfg.url!,
+              name: cfg.name
+            });
+            await httpServer.connect();
+            this.mcpServers.push(httpServer);
+            logger.info(`✅ MCP HTTP Server initialized: ${cfg.name}`);
+          } else if (cfg.type === 'hosted') {
+            const hosted = hostedMcpTool({
+              serverLabel: cfg.serverLabel || cfg.name,
+              serverUrl: cfg.serverUrl || cfg.url!
+            });
+            this.mcpTools.push(hosted);
+            logger.info(`✅ MCP Hosted Tool initialized: ${cfg.name}`);
+          } else if (cfg.type === 'stdio') {
+            logger.warn(`⚠️ STDIO MCP servers not yet implemented: ${cfg.name}`);
+          } else {
+            logger.warn(`⚠️ Unknown MCP type in mcp.json: ${cfg.type} for ${cfg.name}`);
+          }
+        } catch (e) {
+          logger.error(`❌ Failed to initialize MCP server ${cfg.name}:`, e);
+        }
       }
 
+      logger.info(`✅ MCP initialization complete: ${this.mcpServers.length} HTTP, ${this.mcpTools.length} hosted`);
     } catch (error) {
-      logger.warn('⚠️ Odeabank MCP (HTTP) initialization failed:', error);
-      logger.info('   Continuing without Odeabank HTTP MCP');
+      logger.error('❌ MCP server initialization failed:', error);
     }
-
-    return Promise.resolve();
   }
 
   private setupRoutes() {
@@ -144,9 +144,82 @@ export class WebSocketServer {
       res.json(servers);
     });
 
-    // MCP tools (cached from agent runs)
-    this.app.get('/api/mcp/tools', (req, res) => {
-      const server = String(req.query.server || '');
+    // Get MCP tools for all servers
+    this.app.get('/api/mcp/tools', async (req, res) => {
+      try {
+        const allTools: any[] = [];
+
+        logger.info(`📊 MCP Status: ${this.mcpServers.length} servers, ${this.mcpTools.length} hosted tools`);
+
+        // Get tools from all servers
+        for (const server of this.mcpServers) {
+          try {
+            const tools = await server.listTools();
+            allTools.push({
+              serverId: server.name,
+              serverType: 'http',
+              tools: tools || []
+            });
+          } catch (e) {
+            logger.error(`Failed to list tools for ${server.name}:`, e);
+          }
+        }
+
+        // For hosted MCP tools, we need to discover them by calling the hosted server
+        // Or use cached tools from mcpToolRegistry
+        const configs = await this.readMcpConfig();
+        for (const cfg of configs) {
+          if (cfg.type === 'hosted') {
+            // Check if we have cached tools for this server
+            const cachedTools = this.mcpToolRegistry.get(cfg.serverLabel || cfg.name);
+
+            if (cachedTools && cachedTools.length > 0) {
+              allTools.push({
+                serverId: cfg.serverLabel || cfg.name,
+                serverType: 'hosted',
+                tools: cachedTools.map((t: any) => ({
+                  name: t.name || t.toolName || 'unknown',
+                  description: t.description || t.desc || '',
+                  inputSchema: t.inputSchema || t.parameters || {}
+                }))
+              });
+            } else {
+              // No cached tools yet - they will be discovered when agent runs
+              // For now, show empty but indicate the server is configured
+              allTools.push({
+                serverId: cfg.serverLabel || cfg.name,
+                serverType: 'hosted',
+                tools: [],
+                metadata: {
+                  status: 'pending_discovery',
+                  message: 'Tools will be discovered when first used'
+                }
+              });
+            }
+          }
+        }
+
+        // Also include cached tools from registry
+        for (const [label, tools] of this.mcpToolRegistry.entries()) {
+          if (!allTools.some(t => t.serverId === label)) {
+            allTools.push({
+              serverId: label,
+              serverType: 'hosted',
+              tools: tools || []
+            });
+          }
+        }
+
+        res.json({ success: true, tools: allTools });
+      } catch (error) {
+        logger.error('Failed to get MCP tools:', error);
+        res.status(500).json({ success: false, error: 'Failed to get tools' });
+      }
+    });
+
+    // MCP tools for a specific server (cached from agent runs)
+    this.app.get('/api/mcp/tools/:server', (req, res) => {
+      const server = String(req.params.server || '');
       if (!server) {
         return res.json({});
       }
@@ -314,49 +387,91 @@ export class WebSocketServer {
 
           logger.agent(data.agentType, `Processing message: "${data.message}"`);
 
+          // Emit thinking indicator
+          const thinkingMessageId = uuidv4();
+          socket.emit('agent:thinking', {
+            messageId: thinkingMessageId,
+            step: 'Analyzing your request...'
+          });
+
           let agentResponse: any;
           let accumulatedContent = '';
           const responseMessageId = uuidv4();
 
           if (session.contextAware) {
+            // Emit thinking steps
+            socket.emit('agent:thinking', {
+              messageId: thinkingMessageId,
+              step: 'Loading conversation context and memories'
+            });
+
             // Use context-aware agent with MCP tools
             const contextAgent = this.getContextAwareAgent(
-              data.agentType, 
+              data.agentType,
               session.userId, 
               session.conversationId,
               this.mcpServers,
               this.mcpTools
             );
 
+            // Process with context-aware agent
+            socket.emit('agent:thinking', {
+              messageId: thinkingMessageId,
+              step: 'Generating response with available tools...'
+            });
+
+            agentResponse = await contextAgent.processInput(data.message, {
+              stream: false,
+              includeMemory: true
+            });
+
+            // Extract content
+            accumulatedContent = typeof agentResponse === 'string'
+              ? agentResponse
+              : (typeof agentResponse.content === 'string'
+                  ? agentResponse.content
+                  : String(agentResponse.content || agentResponse));
+
+            // Emit tool calls if any
+            if (agentResponse.toolCalls && agentResponse.toolCalls.length > 0) {
+              for (const tc of agentResponse.toolCalls) {
+                const toolCallId = `tc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                socket.emit('tool:call:start', {
+                  messageId: responseMessageId,
+                  toolCall: {
+                    id: toolCallId,
+                    toolName: tc.toolName,
+                    parameters: tc.parameters,
+                    status: 'completed',
+                    startTime: new Date(),
+                    endTime: new Date()
+                  }
+                });
+
+                socket.emit('tool:call:complete', {
+                  messageId: responseMessageId,
+                  toolCall: {
+                    id: toolCallId,
+                    toolName: tc.toolName,
+                    parameters: tc.parameters,
+                    result: tc.result,
+                    status: 'completed',
+                    startTime: new Date(),
+                    endTime: new Date()
+                  }
+                });
+              }
+            }
+
+            // Stream response if requested
             if (data.stream) {
-              // Stream context-aware response
               socket.emit('message:streaming', {
                 messageId: responseMessageId,
                 chunk: '',
                 isComplete: false
               });
 
-              // Note: Context-aware agent streaming would be implemented here
-              // For now, process without streaming
-              agentResponse = await contextAgent.processInput(data.message, {
-                stream: false,
-                includeMemory: true
-              });
-
-              // Extract text content from agent response
-              if (typeof agentResponse.content === 'string') {
-                accumulatedContent = agentResponse.content;
-              } else if (typeof agentResponse.content === 'object' && agentResponse.content !== null) {
-                // Try to extract text from nested object
-                accumulatedContent = agentResponse.content.text || 
-                                   agentResponse.content.content || 
-                                   agentResponse.content.output ||
-                                   JSON.stringify(agentResponse.content);
-              } else {
-                accumulatedContent = String(agentResponse.content || agentResponse);
-              }
-
-              // Simulate streaming for now
               const words = accumulatedContent.split(' ');
               for (let i = 0; i < words.length; i++) {
                 const chunk = (i === 0 ? '' : ' ') + words[i];
@@ -367,19 +482,6 @@ export class WebSocketServer {
                 });
                 await new Promise(resolve => setTimeout(resolve, 50));
               }
-            } else {
-              agentResponse = await contextAgent.processInput(data.message, {
-                stream: false,
-                includeMemory: true
-              });
-              
-              // agentResponse.content should already be a string from context-aware-agent
-              // But double-check and extract if needed
-              accumulatedContent = typeof agentResponse === 'string' 
-                ? agentResponse 
-                : (typeof agentResponse.content === 'string' 
-                    ? agentResponse.content 
-                    : String(agentResponse.content || agentResponse));
             }
           } else {
             // Use traditional agent
@@ -495,8 +597,10 @@ export class WebSocketServer {
             const tcalls: any[] = agentResponse?.toolCalls || [];
             for (const tc of tcalls) {
               if (tc.toolName === 'mcp_list_tools' && Array.isArray(tc.result)) {
-                const label = tc.parameters?.serverLabel || 'odeabank';
-                this.mcpToolRegistry.set(String(label), tc.result);
+                const label = tc.parameters?.serverLabel || 'unknown';
+                if (label && label !== 'unknown') {
+                  this.mcpToolRegistry.set(String(label), tc.result);
+                }
               }
             }
           } catch {}
@@ -873,10 +977,52 @@ export class WebSocketServer {
     }
   }
 
+  private async discoverHostedMcpTools(): Promise<void> {
+    try {
+      logger.info('🔍 Starting hosted MCP tools discovery...');
+
+      const configs = await this.readMcpConfig();
+      for (const cfg of configs) {
+        if (cfg.type === 'hosted' && this.mcpTools.length > 0) {
+          const serverLabel = cfg.serverLabel || cfg.name;
+
+          try {
+            // Create a simple agent (not context-aware) with the hosted MCP tool
+            const { Agent } = await import('@openai/agents');
+            const tempAgent = new Agent({
+              name: 'Tool Discovery Agent',
+              instructions: 'You help discover available MCP tools.',
+              model: 'gpt-4o-mini',
+              tools: this.mcpTools
+            });
+
+            // Run agent to trigger tool discovery - agent will call mcp_list_tools
+            const result = await run(tempAgent, `What tools do you have available?`, {
+              stream: false
+            } as any);
+
+            // The tool registry should be populated by the agent run
+            // via the toolCalls handler in agent:message event
+            logger.info(`✅ Tool discovery completed for ${serverLabel}`);
+          } catch (e) {
+            logger.warn(`⚠️ Failed to discover tools for ${serverLabel}:`, e);
+          }
+        }
+      }
+
+      logger.info(`🎯 Tool discovery complete. Registry has ${this.mcpToolRegistry.size} server(s)`);
+    } catch (e) {
+      logger.warn('⚠️ Hosted MCP tools discovery failed:', e);
+    }
+  }
+
   public async start(port: number = env.PORT) {
     // Initialize MCP servers before starting
     await this.initializeMcpServers();
-    
+
+    // Note: Tools for hosted MCP servers will be discovered on first agent run
+    // This avoids startup delay and unnecessary API calls
+
     return new Promise<void>((resolve) => {
       this.server.listen(port, () => {
         logger.info(`🚀 WebSocket server running on port ${port}`);

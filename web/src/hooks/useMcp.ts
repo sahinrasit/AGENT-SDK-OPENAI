@@ -9,58 +9,66 @@ export type McpServerConfig =
 
 export const useMcp = () => {
   const { isConnected, emit, on, off } = useSocket({ autoConnect: true });
+
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadServersAndTools = useCallback(() => {
-    // Initial fetch of server list
-    return fetch('/api/mcp/servers')
-      .then(r => r.json())
-      .then((list) => {
-        if (Array.isArray(list)) {
-          setServers(list.map((s: any) => ({
-            id: s.name,
-            name: s.name,
-            type: s.type,
-            status: s.status === 'active' ? 'connected' : s.status,
-            url: s.url,
-            tools: [],
-            lastHealthCheck: new Date(),
-            metadata: { serverLabel: s.serverLabel }
-          })));
+  const loadServersAndTools = useCallback(async () => {
+    try {
+      // Fetch server list from mcp.json config
+      const serversRes = await fetch('/api/mcp/config');
+      const serversList = await serversRes.json();
 
-          // Fetch tools for each server (best-effort)
-          list.forEach((s: any) => {
-            fetch(`/api/mcp/tools?server=${encodeURIComponent(s.serverLabel || s.name)}`)
-              .then(r => r.json())
-              .then((data) => {
-                if (Array.isArray(data?.tools)) {
-                  setServers(prev => prev.map(p => (p.id === s.name ? {
-                    ...p,
-                    tools: data.tools.map((t: any) => ({ name: t.name, description: t.description || '', enabled: true }))
-                  } : p)));
-                } else {
-                  // If not cached, trigger discovery and then refetch
-                  fetch(`/api/mcp/discover?server=${encodeURIComponent(s.serverLabel || s.name)}`, { method: 'POST' })
-                    .then(() => fetch(`/api/mcp/tools?server=${encodeURIComponent(s.serverLabel || s.name)}`))
-                    .then(r => r.json())
-                    .then((d2) => {
-                      if (Array.isArray(d2?.tools)) {
-                        setServers(prev => prev.map(p => (p.id === s.name ? {
-                          ...p,
-                          tools: d2.tools.map((t: any) => ({ name: t.name, description: t.description || '', enabled: true }))
-                        } : p)));
-                      }
-                    })
-                    .catch(() => {});
-                }
-              })
-              .catch(() => {});
-          });
+      if (Array.isArray(serversList)) {
+        // Map config entries to MCPServer format
+        setServers(serversList.map((s: any) => ({
+          id: s.name,
+          name: s.name,
+          type: s.type,
+          status: 'connected', // Assume connected if in config
+          url: s.serverUrl || s.url || '',
+          tools: [],
+          lastHealthCheck: new Date(),
+          metadata: { serverLabel: s.serverLabel || s.name }
+        })));
+
+        // Fetch all tools at once
+        try {
+          const toolsRes = await fetch('/api/mcp/tools');
+          const toolsData = await toolsRes.json();
+
+          if (toolsData.success && Array.isArray(toolsData.tools)) {
+            // Update servers with their tools
+            setServers(prev => prev.map(server => {
+              const serverTools = toolsData.tools.find((t: any) =>
+                t.serverId === server.id ||
+                t.serverId === server.metadata?.serverLabel
+              );
+
+              if (serverTools && Array.isArray(serverTools.tools)) {
+                return {
+                  ...server,
+                  tools: serverTools.tools.map((t: any) => ({
+                    name: t.name || t.toolName || 'unknown',
+                    description: t.description || t.desc || '',
+                    parameters: t.inputSchema || t.parameters || {},
+                    enabled: true
+                  }))
+                };
+              }
+
+              return server;
+            }));
+          }
+        } catch (toolsError) {
+          console.error('Failed to fetch tools:', toolsError);
         }
-      })
-      .catch(() => {});
+      }
+    } catch (error) {
+      console.error('Failed to load MCP servers:', error);
+      setError('Failed to load MCP servers');
+    }
   }, []);
 
   useEffect(() => {
@@ -114,37 +122,36 @@ export const useMcp = () => {
     setTimeout(() => setLoading(false), 300);
   }, [isConnected, emit]);
 
-  const addHostedOdeabank = useCallback(() => {
+  const addServer = useCallback(async (config: McpServerConfig) => {
     // Duplicate guard: skip if already exists
-    if (servers.some(s => s.id === 'odeabank' || s.name === 'odeabank')) {
+    if (servers.some(s => s.id === config.name || s.name === config.name)) {
+      setError(`Server "${config.name}" already exists`);
       return;
     }
-    // Hosted MCP (model tarafında çağrılan) - config’e de yaz
-    fetch('/api/mcp/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: 'odeabank',
-        type: 'hosted',
-        serverLabel: 'odeabank',
-        serverUrl: 'https://mcp.cloud.odeabank.com.tr/mcp/sse'
-      })
-    }).then(() => {
-      connectServer({
-        type: 'hosted',
-        name: 'odeabank',
-        serverLabel: 'odeabank',
-        serverUrl: 'https://mcp.cloud.odeabank.com.tr/mcp/sse'
-      } as any);
-    }).catch(() => {
-      connectServer({
-        type: 'hosted',
-        name: 'odeabank',
-        serverLabel: 'odeabank',
-        serverUrl: 'https://mcp.cloud.odeabank.com.tr/mcp/sse'
-      } as any);
-    });
-  }, [connectServer, servers]);
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Save to mcp.json via API
+      const response = await fetch('/api/mcp/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to add server: ${response.statusText}`);
+      }
+
+      // Reload servers to reflect the changes
+      await loadServersAndTools();
+      setLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to add MCP server');
+      setLoading(false);
+    }
+  }, [servers, loadServersAndTools]);
 
   return {
     servers,
@@ -153,7 +160,7 @@ export const useMcp = () => {
     isConnected,
     connectServer,
     disconnectServer,
-    addHostedOdeabank,
+    addServer,
     setServers,
     refresh: loadServersAndTools
   };

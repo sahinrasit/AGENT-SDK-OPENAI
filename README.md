@@ -1,6 +1,6 @@
-# IBM Tech Agent Platform
+# 🤖 IBM Tech Agent Platform
 
-An intelligent agent platform built with OpenAI Agents SDK, featuring Model Context Protocol (MCP) integration and real-time streaming capabilities.
+Enterprise-grade AI agent platform built with the [OpenAI Agents SDK](https://openai.github.io/openai-agents-js/), featuring Model Context Protocol (MCP) integration, multi-agent orchestration, context-aware conversations, and production-ready deployment configurations.
 
 ## 🚀 Features
 
@@ -24,6 +24,18 @@ An intelligent agent platform built with OpenAI Agents SDK, featuring Model Cont
 - **MCP Dashboard**: Visual server management with real-time status
 - **Agent Chat Interface**: Professional chat UI with typing indicators
 - **Handoff Visualization**: SVG-based agent collaboration flow charts
+
+### **Phase 4: Enterprise Features** ✨ NEW
+- **Human-in-the-Loop**: Configurable approval workflows for sensitive operations
+- **Comprehensive Guardrails**: Input validation, content filtering, rate limiting, PII detection
+- **Context Management**: Long-term memory, conversation history, automatic summarization
+- **Security**: SQL injection prevention, command injection blocking, data sanitization
+
+### **Phase 5: Production Deployment** 🚀 NEW
+- **Docker & Kubernetes**: Complete deployment configurations with high availability
+- **Monitoring Stack**: Prometheus + Grafana + Loki for metrics and logs
+- **Auto-scaling**: Horizontal pod autoscaling and load balancing
+- **Comprehensive Testing**: 10+ test suites covering all components
 
 ## 📦 Installation
 
@@ -61,15 +73,23 @@ pnpm start:websocket-server # WebSocket backend API
 pnpm start:web              # React frontend (separate terminal)
 pnpm start:fullstack        # Both backend + frontend
 
-# 🐳 Docker & Production
-pnpm start:docker           # Start with Docker Compose
-pnpm build:docker           # Build Docker images
-pnpm logs:docker           # View Docker logs
-pnpm stop:docker           # Stop Docker containers
+# 🧠 Context Management (Phase 4)
+pnpm start:context-demo     # Interactive context-aware agent
+pnpm start:context-research # Research scenario with memory
+pnpm start:context-code     # Code assistant with context
 
-# 🔧 Development & Testing
-pnpm start:health           # Health check server
-pnpm test                  # Run test suite
+# 🧪 Testing
+pnpm test                   # Comprehensive test suite
+pnpm test:comprehensive     # Detailed test output
+
+# 🐳 Docker & Production
+docker-compose up -d        # Start with Docker Compose
+docker-compose logs -f      # View Docker logs
+docker-compose down         # Stop containers
+
+# ☸️ Kubernetes Deployment
+kubectl apply -f k8s/       # Deploy to Kubernetes
+kubectl get pods -n ibtech-agent  # Check status
 ```
 
 ### Full Command Reference
@@ -95,6 +115,14 @@ tsx src/main.ts mcp                  # Basic MCP
 tsx src/main.ts mcp-types            # All server types
 tsx src/main.ts mcp-multi            # Multi-server
 
+# 🧠 Context Management
+tsx src/main.ts context              # Interactive context demo
+tsx src/main.ts context-research     # Research with memory
+tsx src/main.ts context-code         # Code assistant
+
+# 🧪 Testing
+tsx src/main.ts test                 # Comprehensive tests
+
 # 🎯 Special
 tsx src/main.ts all                  # Run all examples
 ```
@@ -102,24 +130,33 @@ tsx src/main.ts all                  # Run all examples
 ## 🏗️ Project Structure
 
 ```
-src/
-├── main.ts                 # Main application entry point
-├── config/
-│   └── env.ts             # Environment configuration with Zod validation
-├── utils/
-│   └── logger.ts          # Comprehensive logging utility
-├── examples/
-│   ├── hello-world.ts     # Basic agent implementation
-│   ├── chat-streaming.ts  # Streaming and interactive chat
-│   └── mcp-filesystem.ts  # MCP integration examples
-├── agents/                # Future: Custom agent implementations
-├── tools/                 # Future: Custom tool definitions
-└── mcp/                   # Future: MCP server configurations
-
-sample_files/              # Sample data for MCP filesystem server
-├── books.txt             # Programming book recommendations
-├── favorite_songs.txt    # Coding music playlist
-└── project_ideas.txt     # Development project ideas
+ibtech-agent/
+├── src/
+│   ├── main.ts              # Main entry point
+│   ├── config/              # Environment & configuration
+│   ├── agents/              # Agent definitions & handoffs
+│   ├── context/             # Context management & memory
+│   ├── examples/            # Runnable demos
+│   ├── guardrails/          # Security & validation
+│   ├── mcp/                 # MCP server integrations
+│   ├── research/            # Multi-agent research system
+│   ├── server/              # WebSocket & HTTP servers
+│   ├── testing/             # Comprehensive test suites
+│   ├── utils/               # Logging & utilities
+│   └── workflows/           # Human approval workflows
+├── web/                     # React frontend
+│   ├── src/
+│   │   ├── components/      # React components
+│   │   ├── hooks/           # Custom hooks
+│   │   └── App.tsx          # Main app
+│   └── public/              # Static assets
+├── k8s/                     # Kubernetes manifests
+├── monitoring/              # Prometheus, Grafana, Loki
+├── nginx/                   # Nginx configurations
+├── docker-compose.yml       # Docker Compose
+├── Dockerfile               # Backend Docker image
+├── ROADMAP.md              # Development roadmap
+└── DEPLOYMENT.md           # Deployment guide
 ```
 
 ## 🔧 Configuration
@@ -239,14 +276,25 @@ logger.mcp('ServerName', 'MCP server status');
 3. Add the new script to `package.json`
 4. Update the main runner in `src/main.ts`
 
-## 🔮 Roadmap
+## 📚 Documentation
 
-This is Phase 1 of a comprehensive agent platform. Upcoming features:
+- **[ROADMAP.md](ROADMAP.md)**: Complete 10-week development roadmap with all features
+- **[DEPLOYMENT.md](DEPLOYMENT.md)**: Production deployment guide for Docker and Kubernetes
+- **[OpenAI Agents SDK Docs](https://openai.github.io/openai-agents-js/)**: Official SDK documentation
 
-- **Phase 2**: Multi-agent orchestration with handoffs
-- **Phase 3**: Web interface with real-time streaming
-- **Phase 4**: Advanced MCP server types (HTTP, Hosted)
-- **Phase 5**: Production deployment and enterprise features
+## 🎯 Use Cases
+
+### 1. Research Assistant
+Multi-agent pipeline that plans, searches, and synthesizes research reports with long-term memory.
+
+### 2. Customer Service
+Intelligent triage and routing with context-aware responses and approval workflows.
+
+### 3. Code Assistant
+Programming help with project context, coding preferences, and security guardrails.
+
+### 4. Enterprise Agent Platform
+Production-ready deployment with monitoring, scaling, and security features.
 
 ## 📖 OpenAI Agents SDK Reference
 

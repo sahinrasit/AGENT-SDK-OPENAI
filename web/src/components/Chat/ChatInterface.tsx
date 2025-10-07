@@ -18,38 +18,38 @@ const getAgentInfo = (agentType: AgentType) => {
   switch (agentType) {
     case 'planner':
       return {
-        name: 'Research Planner',
-        description: 'Creates research strategies and search plans',
+        name: 'AiCoE Planner',
+        description: 'AI-powered research and planning specialist',
         color: 'purple'
       };
     case 'search':
       return {
-        name: 'Search Specialist',
-        description: 'Gathers and synthesizes information',
+        name: 'AiCoE Search',
+        description: 'Intelligent information gathering expert',
         color: 'cyan'
       };
     case 'writer':
       return {
-        name: 'Report Writer',
-        description: 'Creates comprehensive reports and documentation',
+        name: 'AiCoE Writer',
+        description: 'Advanced content creation specialist',
         color: 'green'
       };
     case 'triage':
       return {
-        name: 'Triage Agent',
-        description: 'Routes requests to specialized agents',
+        name: 'AiCoE Assistant',
+        description: 'AI-powered intelligent assistant by IBTech',
         color: 'blue'
       };
     case 'customer-service':
       return {
-        name: 'Customer Service',
-        description: 'Handles customer inquiries and support',
+        name: 'AiCoE Support',
+        description: 'AI-driven customer service expert',
         color: 'indigo'
       };
     default:
       return {
-        name: 'Assistant',
-        description: 'General purpose AI assistant',
+        name: 'AiCoE Agent',
+        description: 'AI Center of Excellence - IBTech',
         color: 'gray'
       };
   }
