@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:openai.github.io)",
+      "WebFetch(domain:github.com)",
+      "Bash(pnpm:*)",
+      "Bash(npx tailwindcss init:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

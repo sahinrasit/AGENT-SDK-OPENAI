@@ -1,0 +1,25 @@
+Favorite Programming Books:
+
+1. "Clean Code" by Robert C. Martin
+   - A guide to writing readable, maintainable code
+   - Essential principles for software craftsmanship
+
+2. "Design Patterns" by Gang of Four
+   - Classic book on software design patterns
+   - Fundamental knowledge for object-oriented programming
+
+3. "The Pragmatic Programmer" by David Thomas and Andrew Hunt
+   - Practical advice for software development
+   - Tips for becoming a better programmer
+
+4. "You Don't Know JS" by Kyle Simpson
+   - Deep dive into JavaScript fundamentals
+   - Essential for web developers
+
+5. "Effective TypeScript" by Dan Vanderkam
+   - Best practices for TypeScript development
+   - How to leverage TypeScript's type system effectively
+
+6. "System Design Interview" by Alex Xu
+   - Guide to system design interviews
+   - Real-world architecture patterns and solutions

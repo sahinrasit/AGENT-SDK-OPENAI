@@ -1,0 +1,230 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useSocket } from './useSocket';
+import { Message, ChatSession, AgentType, AgentResponse } from '../types/agent';
+
+interface UseChatOptions {
+  sessionId?: string;
+  agentType: AgentType;
+  autoConnect?: boolean;
+}
+
+export const useChat = (options: UseChatOptions) => {
+  const { sessionId: initialSessionId, agentType, autoConnect = true } = options;
+
+  const [session, setSession] = useState<ChatSession | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const {
+    isConnected,
+    connectionError,
+    emit,
+    on,
+    off
+  } = useSocket({
+    autoConnect,
+    onConnect: () => {
+      console.log('Socket connected');
+      setError(null);
+    },
+    onDisconnect: () => {
+      console.log('Socket disconnected');
+      setIsLoading(false);
+      setStreamingMessageId(null);
+    },
+    onError: (error) => {
+      console.error('Socket error:', error);
+      setError('Connection error');
+      setIsLoading(false);
+    }
+  });
+
+  // Initialize or join session
+  useEffect(() => {
+    if (!isConnected) return;
+
+    if (initialSessionId) {
+      // Join existing session
+      emit('session:join', { sessionId: initialSessionId });
+    } else {
+      // Create new session
+      emit('session:create', { agentType });
+    }
+  }, [isConnected, initialSessionId, agentType]);
+
+  // Set up event listeners
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const handleSessionCreated = (newSession: ChatSession) => {
+      setSession(newSession);
+      setMessages(newSession.messages);
+    };
+
+    const handleMessageReceived = (message: Message) => {
+      // Console log for debugging
+      console.log('📨 Received message:', message);
+      console.log('Content type:', typeof message.content);
+      console.log('Content value:', message.content);
+      
+      // Ensure timestamp is a Date object and content is a string
+      let contentText = '';
+      if (typeof message.content === 'string') {
+        contentText = message.content;
+      } else if (typeof message.content === 'object' && message.content !== null) {
+        // Try to extract text from object
+        const contentObj = message.content as any;
+        contentText = contentObj.text || contentObj.content || contentObj.output || JSON.stringify(message.content, null, 2);
+      } else {
+        contentText = String(message.content || '');
+      }
+      
+      const processedMessage = {
+        ...message,
+        timestamp: message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp),
+        content: contentText
+      };
+      
+      console.log('✅ Processed message content:', processedMessage.content);
+      
+      setMessages(prev => [...prev, processedMessage]);
+      setIsLoading(false);
+      setStreamingMessageId(null);
+    };
+
+    const handleMessageStreaming = (data: {
+      messageId: string;
+      chunk: string;
+      isComplete: boolean;
+    }) => {
+      const { messageId, chunk, isComplete } = data;
+
+      console.log('🌊 Streaming chunk:', { messageId, chunk: chunk.substring(0, 50), isComplete });
+
+      // Ensure chunk is a string
+      const chunkText = typeof chunk === 'string' ? chunk : String(chunk || '');
+
+      setMessages(prev => {
+        const existingIndex = prev.findIndex(m => m.id === messageId);
+
+        if (existingIndex >= 0) {
+          // Update existing message
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            content: updated[existingIndex].content + chunkText,
+            isStreaming: !isComplete
+          };
+          return updated;
+        } else {
+          // Create new streaming message
+          const newMessage: Message = {
+            id: messageId,
+            type: 'agent',
+            content: chunkText,
+            timestamp: new Date(),
+            agentType,
+            isStreaming: !isComplete
+          };
+          return [...prev, newMessage];
+        }
+      });
+
+      if (isComplete) {
+        setStreamingMessageId(null);
+        setIsLoading(false);
+      } else {
+        setStreamingMessageId(messageId);
+      }
+    };
+
+    const handleError = (error: { message: string; code?: string }) => {
+      setError(error.message);
+      setIsLoading(false);
+      setStreamingMessageId(null);
+    };
+
+    // Register event listeners
+    on('session:created', handleSessionCreated);
+    on('message:received', handleMessageReceived);
+    on('message:streaming', handleMessageStreaming);
+    on('error', handleError);
+
+    // Cleanup
+    return () => {
+      off('session:created', handleSessionCreated);
+      off('message:received', handleMessageReceived);
+      off('message:streaming', handleMessageStreaming);
+      off('error', handleError);
+    };
+  }, [isConnected, agentType, on, off]);
+
+  const sendMessage = useCallback((content: string) => {
+    if (!isConnected || !session || isLoading) {
+      return;
+    }
+
+    // Create user message
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      type: 'user',
+      content,
+      timestamp: new Date()
+    };
+
+    // Add user message immediately
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+    setError(null);
+
+    // Send to server
+    emit('agent:message', {
+      message: content,
+      agentType,
+      sessionId: session.id
+    });
+  }, [isConnected, session, isLoading, agentType, emit]);
+
+  const stopGeneration = useCallback(() => {
+    if (streamingMessageId) {
+      // TODO: Implement stop generation
+      setIsLoading(false);
+      setStreamingMessageId(null);
+    }
+  }, [streamingMessageId]);
+
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    setError(null);
+    setIsLoading(false);
+    setStreamingMessageId(null);
+  }, []);
+
+  const retryLastMessage = useCallback(() => {
+    const lastUserMessage = messages
+      .filter(m => m.type === 'user')
+      .pop();
+
+    if (lastUserMessage) {
+      sendMessage(lastUserMessage.content);
+    }
+  }, [messages, sendMessage]);
+
+  return {
+    // Session state
+    session: session ? { ...session, messages } : null,
+    messages,
+    isLoading,
+    streamingMessageId,
+    error: error || connectionError,
+    isConnected,
+
+    // Actions
+    sendMessage,
+    stopGeneration,
+    clearMessages,
+    retryLastMessage
+  };
+};

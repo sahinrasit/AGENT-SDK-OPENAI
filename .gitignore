@@ -1,0 +1,50 @@
+# Node
+node_modules/
+.pnpm-store/
+.npm/
+.npmrc
+
+# Build outputs
+/dist/
+**/dist/
+/build/
+**/build/
+*.log
+server.log
+
+# TypeScript
+*.tsbuildinfo
+
+# Env
+.env
+.env.*
+!.env.example
+
+# IDE & OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Coverage & tests
+coverage/
+**/coverage/
+.junit/
+
+# Web app (Vite/React)
+web/node_modules/
+web/dist/
+web/.vite/
+web/.eslintcache
+
+# Docker/compose artifacts
+**/.docker-cache/
+
+# Cursor/agents
+.cursor/
+.mcp/
+**/.cursor/**
+
+# Misc
+.tmp/
+.cache/

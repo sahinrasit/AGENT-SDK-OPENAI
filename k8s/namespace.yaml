@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ibtech-agent
+  labels:
+    name: ibtech-agent
+    app: ibtech-agent-platform

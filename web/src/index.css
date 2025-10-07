@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Custom styles for the agent interface */
+body {
+  background-color: #f9fafb;
+  color: #111827;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+}
