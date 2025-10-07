@@ -45,15 +45,22 @@ export class ContextAwareAgent {
     // Build context-aware instructions
     const enhancedInstructions = this.buildContextAwareInstructions(config.instructions);
 
+    const mcpServers = config.mcpServers || [];
+    const tools = config.tools || [];
+    
+    logger.info(`🤖 Creating context-aware agent: ${config.name} for user: ${config.userId}`);
+    logger.info(`   - MCP Servers: ${mcpServers.length}`);
+    logger.info(`   - Tools: ${tools.length}`);
+    
     this.agent = new Agent({
       name: config.name,
       instructions: enhancedInstructions,
       model: config.model,
-      mcpServers: config.mcpServers || [],
-      tools: config.tools || [],
+      mcpServers,
+      tools,
     });
 
-    logger.info(`🤖 Created context-aware agent: ${config.name} for user: ${config.userId}`);
+    logger.info(`✅ Context-aware agent created successfully`);
   }
 
   /**

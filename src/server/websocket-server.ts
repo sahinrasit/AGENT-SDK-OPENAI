@@ -420,6 +420,7 @@ export class WebSocketServer {
             });
 
             // Use context-aware agent with MCP tools
+            logger.info(`🔧 Creating agent with ${this.mcpServers.length} MCP servers and ${this.mcpTools.length} MCP tools`);
             const contextAgent = this.getContextAwareAgent(
               data.agentType,
               session.userId, 

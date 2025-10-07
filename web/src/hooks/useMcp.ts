@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { MCPServer } from '../types/agent';
 import { useSocket } from './useSocket';
 
@@ -13,64 +13,62 @@ export const useMcp = () => {
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isLoadingRef = useRef(false);
 
   const loadServersAndTools = useCallback(async () => {
+    if (isLoadingRef.current) return; // Prevent concurrent requests
+    
+    isLoadingRef.current = true;
     try {
       // Fetch server list from mcp.json config
       const serversRes = await fetch('/api/mcp/config');
       const serversList = await serversRes.json();
 
-      if (Array.isArray(serversList)) {
-        // Fetch all tools at once
-        try {
-          const toolsRes = await fetch('/api/mcp/tools');
-          const toolsData = await toolsRes.json();
+      if (!Array.isArray(serversList)) return;
 
-          // Map config entries to MCPServer format with tools
-          setServers(serversList.map((s: any) => {
-            const serverTools = toolsData.success && Array.isArray(toolsData.tools)
-              ? toolsData.tools.find((t: any) =>
-                  t.serverId === s.name ||
-                  t.serverId === s.serverLabel
-                )
-              : null;
+      // Fetch all tools at once
+      const toolsRes = await fetch('/api/mcp/tools');
+      const toolsData = await toolsRes.json();
 
-            return {
-              id: s.name,
-              name: s.name,
-              type: s.type,
-              status: 'connected',
-              url: s.serverUrl || s.url || '',
-              tools: serverTools && Array.isArray(serverTools.tools)
-                ? serverTools.tools.map((t: any) => ({
-                    name: t.name || t.toolName || 'unknown',
-                    description: t.description || t.desc || '',
-                    parameters: t.inputSchema || t.parameters || {},
-                    enabled: true
-                  }))
-                : [],
-              lastHealthCheck: new Date(),
-              metadata: { serverLabel: s.serverLabel || s.name }
-            };
-          }));
-        } catch (toolsError) {
-          console.error('Failed to fetch tools:', toolsError);
-          // Still set servers even if tools fetch fails
-          setServers(serversList.map((s: any) => ({
-            id: s.name,
-            name: s.name,
-            type: s.type,
-            status: 'connected',
-            url: s.serverUrl || s.url || '',
-            tools: [],
-            lastHealthCheck: new Date(),
-            metadata: { serverLabel: s.serverLabel || s.name }
-          })));
-        }
-      }
+      // Map config entries to MCPServer format with tools
+      const updatedServers = serversList.map((s: any) => {
+        const serverTools = toolsData.success && Array.isArray(toolsData.tools)
+          ? toolsData.tools.find((t: any) =>
+              t.serverId === s.name ||
+              t.serverId === s.serverLabel
+            )
+          : null;
+
+        return {
+          id: s.name, // Unique ID based on name
+          name: s.name,
+          type: s.type,
+          status: 'connected',
+          url: s.serverUrl || s.url || '',
+          tools: serverTools && Array.isArray(serverTools.tools)
+            ? serverTools.tools.map((t: any) => ({
+                name: t.name || t.toolName || 'unknown',
+                description: t.description || t.desc || '',
+                parameters: t.inputSchema || t.parameters || {},
+                enabled: true
+              }))
+            : [],
+          lastHealthCheck: new Date(),
+          metadata: { serverLabel: s.serverLabel || s.name }
+        };
+      });
+
+      // Remove duplicates based on ID
+      const uniqueServers = updatedServers.filter((server, index, self) =>
+        index === self.findIndex((s) => s.id === server.id)
+      );
+
+      setServers(uniqueServers);
     } catch (error) {
       console.error('Failed to load MCP servers:', error);
       setError('Failed to load MCP servers');
+    } finally {
+      isLoadingRef.current = false;
     }
   }, []);
 
@@ -79,10 +77,12 @@ export const useMcp = () => {
 
     const handleStatus = (server: any) => {
       setServers(prev => {
-        const idx = prev.findIndex(s => s.id === server.id || s.name === server.name);
+        const serverId = server.id || server.name;
+        const idx = prev.findIndex(s => s.id === serverId);
+        
         const base: MCPServer = {
-          id: server.id || server.name,
-          name: server.name || server.id,
+          id: serverId,
+          name: server.name || serverId,
           type: server.type || 'hosted',
           status: server.status || 'connected',
           url: server.url,
@@ -90,12 +90,18 @@ export const useMcp = () => {
           lastHealthCheck: new Date(),
           metadata: server.metadata || {}
         };
+        
         if (idx >= 0) {
+          // Update existing server
           const next = [...prev];
           next[idx] = { ...next[idx], ...base };
           return next;
+        } else {
+          // Add new server only if it doesn't exist
+          const exists = prev.some(s => s.id === serverId);
+          if (exists) return prev; // Prevent duplicate
+          return [...prev, base];
         }
-        return [...prev, base];
       });
     };
 
