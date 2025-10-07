@@ -21,48 +21,51 @@ export const useMcp = () => {
       const serversList = await serversRes.json();
 
       if (Array.isArray(serversList)) {
-        // Map config entries to MCPServer format
-        setServers(serversList.map((s: any) => ({
-          id: s.name,
-          name: s.name,
-          type: s.type,
-          status: 'connected', // Assume connected if in config
-          url: s.serverUrl || s.url || '',
-          tools: [],
-          lastHealthCheck: new Date(),
-          metadata: { serverLabel: s.serverLabel || s.name }
-        })));
-
         // Fetch all tools at once
         try {
           const toolsRes = await fetch('/api/mcp/tools');
           const toolsData = await toolsRes.json();
 
-          if (toolsData.success && Array.isArray(toolsData.tools)) {
-            // Update servers with their tools
-            setServers(prev => prev.map(server => {
-              const serverTools = toolsData.tools.find((t: any) =>
-                t.serverId === server.id ||
-                t.serverId === server.metadata?.serverLabel
-              );
+          // Map config entries to MCPServer format with tools
+          setServers(serversList.map((s: any) => {
+            const serverTools = toolsData.success && Array.isArray(toolsData.tools)
+              ? toolsData.tools.find((t: any) =>
+                  t.serverId === s.name ||
+                  t.serverId === s.serverLabel
+                )
+              : null;
 
-              if (serverTools && Array.isArray(serverTools.tools)) {
-                return {
-                  ...server,
-                  tools: serverTools.tools.map((t: any) => ({
+            return {
+              id: s.name,
+              name: s.name,
+              type: s.type,
+              status: 'connected',
+              url: s.serverUrl || s.url || '',
+              tools: serverTools && Array.isArray(serverTools.tools)
+                ? serverTools.tools.map((t: any) => ({
                     name: t.name || t.toolName || 'unknown',
                     description: t.description || t.desc || '',
                     parameters: t.inputSchema || t.parameters || {},
                     enabled: true
                   }))
-                };
-              }
-
-              return server;
-            }));
-          }
+                : [],
+              lastHealthCheck: new Date(),
+              metadata: { serverLabel: s.serverLabel || s.name }
+            };
+          }));
         } catch (toolsError) {
           console.error('Failed to fetch tools:', toolsError);
+          // Still set servers even if tools fetch fails
+          setServers(serversList.map((s: any) => ({
+            id: s.name,
+            name: s.name,
+            type: s.type,
+            status: 'connected',
+            url: s.serverUrl || s.url || '',
+            tools: [],
+            lastHealthCheck: new Date(),
+            metadata: { serverLabel: s.serverLabel || s.name }
+          })));
         }
       }
     } catch (error) {
@@ -97,12 +100,20 @@ export const useMcp = () => {
     };
 
     on('mcp:status', handleStatus);
+    
+    // Load servers only once when connected
     loadServersAndTools();
+    
+    // Set up periodic refresh (every 60 seconds instead of continuous)
+    const refreshInterval = setInterval(() => {
+      loadServersAndTools();
+    }, 60000); // 60 seconds
 
     return () => {
       off('mcp:status', handleStatus);
+      clearInterval(refreshInterval);
     };
-  }, [isConnected, on, off, loadServersAndTools]);
+  }, [isConnected, on, off]); // Removed loadServersAndTools from dependencies
 
   const connectServer = useCallback((config: McpServerConfig) => {
     if (!isConnected) return;

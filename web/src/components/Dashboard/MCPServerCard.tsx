@@ -79,6 +79,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDiscovering, setIsDiscovering] = useState(false);
 
   const handleRefresh = async () => {
     if (onRefreshServer && !isRefreshing) {
@@ -88,8 +89,38 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
     }
   };
 
+  const handleDiscoverTools = async () => {
+    if (isDiscovering) return;
+    
+    setIsDiscovering(true);
+    try {
+      const serverLabel = server.metadata?.serverLabel || server.name;
+      const response = await fetch(`/api/mcp/discover?server=${encodeURIComponent(serverLabel)}`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Discovered ${data.count} tools for ${serverLabel}`);
+        // Trigger refresh to get updated tools
+        if (onRefreshServer) {
+          await onRefreshServer(server.id);
+        }
+      } else {
+        console.error('Failed to discover tools');
+      }
+    } catch (error) {
+      console.error('Error discovering tools:', error);
+    } finally {
+      setTimeout(() => setIsDiscovering(false), 2000);
+    }
+  };
+
   const connectedTools = server.tools.filter(tool => tool.enabled);
   const isConnected = server.status === 'connected';
+  const isHosted = server.type === 'hosted';
+  const hasDefaultTools = server.tools.length === 2 && 
+    server.tools.some(t => t.name === 'mcp_call_tool');
 
   return (
     <div className="card hover:shadow-md transition-shadow duration-200">
@@ -137,6 +168,32 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
 
           {/* Actions */}
           <div className="flex items-center gap-1">
+            {isHosted && hasDefaultTools && (
+              <button
+                onClick={handleDiscoverTools}
+                disabled={isDiscovering}
+                className={clsx(
+                  'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
+                  isDiscovering 
+                    ? 'bg-blue-100 text-blue-600 cursor-wait'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                )}
+                title="Discover real MCP tools"
+              >
+                {isDiscovering ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 inline animate-spin mr-1" />
+                    Discovering...
+                  </>
+                ) : (
+                  <>
+                    <Wrench className="w-3 h-3 inline mr-1" />
+                    Discover Tools
+                  </>
+                )}
+              </button>
+            )}
+            
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}

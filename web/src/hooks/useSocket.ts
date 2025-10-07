@@ -12,7 +12,7 @@ interface UseSocketOptions {
 
 export const useSocket = (options: UseSocketOptions = {}) => {
   const {
-    serverUrl = 'http://localhost:3003',
+    serverUrl = import.meta.env.VITE_WEBSOCKET_URL || 'http://localhost:3000',
     autoConnect = true,
     onConnect,
     onDisconnect,

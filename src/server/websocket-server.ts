@@ -184,16 +184,30 @@ export class WebSocketServer {
                 }))
               });
             } else {
-              // No cached tools yet - they will be discovered when agent runs
-              // For now, show empty but indicate the server is configured
+              // Show default MCP tools for hosted servers
+              // Actual tools will be discovered when agent first uses them
               allTools.push({
                 serverId: cfg.serverLabel || cfg.name,
                 serverType: 'hosted',
-                tools: [],
-                metadata: {
-                  status: 'pending_discovery',
-                  message: 'Tools will be discovered when first used'
-                }
+                tools: [
+                  {
+                    name: 'mcp_call_tool',
+                    description: 'Call any tool available on the MCP server',
+                    inputSchema: {
+                      type: 'object',
+                      properties: {
+                        toolName: { type: 'string', description: 'Name of the tool to call' },
+                        arguments: { type: 'object', description: 'Tool arguments' }
+                      },
+                      required: ['toolName']
+                    }
+                  },
+                  {
+                    name: 'mcp_list_tools',
+                    description: 'List all available tools on the MCP server',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
               });
             }
           }
@@ -930,19 +944,54 @@ export class WebSocketServer {
   // Explicitly discover tools for a server label/name and cache results
   private async discoverToolsFor(serverLabel: string): Promise<number> {
     try {
-      // Try to build a minimal agent with hosted tool if present
-      const hosted = this.mcpTools.find((t: any) => (t as any).serverLabel === serverLabel || (t as any).name === serverLabel);
-      const servers = this.mcpServers;
-      const tools: any[] = [];
-      if (hosted) tools.push(hosted);
+      logger.info(`🔍 Discovering tools for ${serverLabel}...`);
+      
+      // Find the hosted tool
+      const hosted = this.mcpTools.find((t: any) => 
+        (t as any).serverLabel === serverLabel || (t as any).name === serverLabel
+      );
+      
+      if (!hosted) {
+        logger.warn(`⚠️ No hosted tool found for ${serverLabel}`);
+        return 0;
+      }
 
-      // Use getAllMcpTools helper if available (will call list_tools under the hood)
-      const result = await getAllMcpTools({ servers, tools } as any);
-      const items = Array.isArray(result) ? result : (Array.isArray((result as any)?.tools) ? (result as any).tools : []);
-      this.mcpToolRegistry.set(serverLabel, items);
-      return items.length;
-    } catch (e) {
-      // Fallback: no-op
+      // Create a temporary agent with the hosted tool to discover available tools
+      const { Agent } = await import('@openai/agents');
+      const discoveryAgent = new Agent({
+        name: 'Tool Discovery Agent',
+        instructions: 'You help discover available MCP tools. Call mcp_list_tools to list all available tools.',
+        model: env.OPENAI_MODEL,
+        tools: [hosted]
+      });
+
+      // Run the agent to trigger tool discovery
+      logger.info(`🤖 Running discovery agent for ${serverLabel}...`);
+      const result = await run(discoveryAgent, `List all available tools for ${serverLabel}`, {
+        stream: false
+      } as any);
+
+      logger.info(`✅ Discovery agent completed for ${serverLabel}`);
+
+      // Try to get tools using getAllMcpTools
+      const allTools = await getAllMcpTools({ 
+        servers: this.mcpServers, 
+        tools: [hosted] 
+      } as any);
+      
+      const items = Array.isArray(allTools) ? allTools : 
+                   (Array.isArray((allTools as any)?.tools) ? (allTools as any).tools : []);
+      
+      if (items.length > 0) {
+        this.mcpToolRegistry.set(serverLabel, items);
+        logger.info(`✅ Cached ${items.length} tools for ${serverLabel}`);
+        return items.length;
+      }
+
+      logger.warn(`⚠️ No tools discovered for ${serverLabel}`);
+      return 0;
+    } catch (e: any) {
+      logger.error(`❌ Failed to discover tools for ${serverLabel}:`, e?.message || e);
       return 0;
     }
   }
