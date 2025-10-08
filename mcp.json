@@ -1,10 +1,3 @@
 {
-  "servers": [
-    {
-      "name": "odeabank",
-      "type": "hosted",
-      "serverLabel": "odeaaaa",
-      "serverUrl": "https://mcp.cloud.odeabank.com.tr/mcp/sse"
-    }
-  ]
+  "servers": []
 }

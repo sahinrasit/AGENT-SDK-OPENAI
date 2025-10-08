@@ -18,8 +18,8 @@ export const webSearchTool = tool({
   description: 'Search the web for current information, news, articles, and data. Use this when you need up-to-date information or facts that are not in your training data.',
   parameters: z.object({
     query: z.string().min(1).describe('The search query - be specific and clear'),
-    numResults: z.number().min(1).max(10).default(5).optional().describe('Number of results to return (1-10)'),
-    language: z.enum(['tr', 'en', 'auto']).default('auto').optional().describe('Language preference for results'),
+    numResults: z.number().min(1).max(10).default(5).nullable().describe('Number of results to return (1-10)'),
+    language: z.enum(['tr', 'en', 'auto']).default('auto').nullable().describe('Language preference for results'),
   }),
 
   /**
@@ -83,8 +83,8 @@ export const searchNewsTool = tool({
   description: 'Search for recent news articles and current events. Use this for time-sensitive information and breaking news.',
   parameters: z.object({
     query: z.string().min(1).describe('News search query'),
-    timeframe: z.enum(['1h', '24h', '7d', '30d']).default('24h').optional().describe('How recent the news should be'),
-    category: z.enum(['business', 'technology', 'science', 'health', 'general']).optional().describe('News category')
+    timeframe: z.enum(['1h', '24h', '7d', '30d']).default('24h').nullable().describe('How recent the news should be'),
+    category: z.enum(['business', 'technology', 'science', 'health', 'general']).nullable().describe('News category')
   }),
 
   execute: async ({ query, timeframe = '24h', category }) => {

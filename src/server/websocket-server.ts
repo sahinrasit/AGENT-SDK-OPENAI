@@ -14,6 +14,8 @@ import { memoryManager } from '../context/memory-manager.js';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
+import sessionApiRouter from '../api/session-api.js';
+import { database } from '../db/index.js';
 
 interface ChatSession {
   id: string;
@@ -131,16 +133,21 @@ export class WebSocketServer {
 
   private setupRoutes() {
     // Health check endpoint
-    this.app.get('/health', (req, res) => {
+    this.app.get('/health', async (req, res) => {
+      const dbHealthy = await database.healthCheck().catch(() => false);
       res.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
         sessions: this.chatSessions.size,
-        clients: this.connectedClients.size
+        clients: this.connectedClients.size,
+        database: dbHealthy ? 'healthy' : 'unavailable'
       });
     });
 
-    // Get session info
+    // Session Management API Routes
+    this.app.use('/api', sessionApiRouter);
+
+    // Get session info (legacy - keep for backward compat)
     this.app.get('/api/sessions/:sessionId', (req, res) => {
       const session = this.chatSessions.get(req.params.sessionId);
       if (!session) {
@@ -598,6 +605,7 @@ export class WebSocketServer {
                       messageId: responseMessageId,
                       toolCall: {
                         id: item.call_id,
+                        toolName: item.name || 'unknown',
                         result: item.output,
                         status: 'completed',
                         endTime: new Date()
@@ -752,14 +760,18 @@ export class WebSocketServer {
 
           // Emit completion
           if (data.stream) {
+            // Only send isComplete flag for streaming
+            // Don't send message:received again (content already streamed)
             socket.emit('message:streaming', {
               messageId: responseMessageId,
               chunk: '',
-              isComplete: true
+              isComplete: true,
+              toolCalls: agentResponse?.toolCalls || [] // Include tool calls in completion
             });
+          } else {
+            // Only send message:received if NOT streaming
+            socket.emit('message:received', agentMessage);
           }
-
-          socket.emit('message:received', agentMessage);
 
           // Emit memory updates if context-aware
           if (session.contextAware && agentResponse?.memories) {
@@ -1218,6 +1230,14 @@ export class WebSocketServer {
   }
 
   public async start(port: number = env.PORT) {
+    // Initialize database connection
+    try {
+      await database.connect();
+      logger.info('✅ Database connected successfully');
+    } catch (error) {
+      logger.warn('⚠️ Database connection failed - running without persistence:', error);
+    }
+
     // Initialize MCP servers before starting
     await this.initializeMcpServers();
 

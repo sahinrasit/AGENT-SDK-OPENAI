@@ -135,8 +135,9 @@ export const useChat = (options: UseChatOptions) => {
       isComplete: boolean;
       isStart?: boolean;
       error?: string;
+      toolCalls?: ToolCall[];
     }) => {
-      const { messageId, chunk, isComplete, isStart, error } = data;
+      const { messageId, chunk, isComplete, isStart, error, toolCalls } = data;
 
       // Ensure chunk is a string
       const chunkText = typeof chunk === 'string' ? chunk : String(chunk || '');
@@ -152,7 +153,9 @@ export const useChat = (options: UseChatOptions) => {
           updated[existingIndex] = {
             ...updated[existingIndex],
             content: currentContent + chunkText, // Append each chunk immediately
-            isStreaming: !isComplete
+            isStreaming: !isComplete,
+            // Add toolCalls when stream completes
+            ...(isComplete && toolCalls ? { toolCalls } : {})
           };
           return updated;
         } else if (isStart || chunkText) {
@@ -163,7 +166,8 @@ export const useChat = (options: UseChatOptions) => {
             content: chunkText, // Start with first chunk
             timestamp: new Date(),
             agentType,
-            isStreaming: !isComplete
+            isStreaming: !isComplete,
+            ...(isComplete && toolCalls ? { toolCalls } : {})
           };
           return [...prev, newMessage];
         }
@@ -248,7 +252,7 @@ export const useChat = (options: UseChatOptions) => {
       });
     };
 
-    const handleToolCallComplete = (data: { messageId: string; toolCall: ToolCall }) => {
+    const handleToolCallComplete = (data: { messageId: string; toolCall: Partial<ToolCall> }) => {
       const { messageId, toolCall } = data;
 
       setMessages(prev => {
@@ -260,8 +264,13 @@ export const useChat = (options: UseChatOptions) => {
           const toolCallIndex = toolCalls.findIndex(tc => tc.id === toolCall.id);
 
           if (toolCallIndex >= 0) {
-            // Update existing tool call
-            toolCalls[toolCallIndex] = toolCall;
+            // Merge tool call data (keep existing data, add new result)
+            toolCalls[toolCallIndex] = {
+              ...toolCalls[toolCallIndex],
+              ...toolCall,
+              status: 'completed',
+              endTime: toolCall.endTime || new Date()
+            };
             updated[messageIndex] = {
               ...updated[messageIndex],
               toolCalls: [...toolCalls]

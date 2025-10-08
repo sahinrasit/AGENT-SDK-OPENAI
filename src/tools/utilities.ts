@@ -54,8 +54,8 @@ export const dateTimeTool = tool({
   name: 'get_current_datetime',
   description: 'Get current date and time in various formats and timezones. Useful for time-sensitive operations.',
   parameters: z.object({
-    timezone: z.string().default('UTC').optional().describe('Timezone (e.g., "UTC", "America/New_York", "Europe/Istanbul")'),
-    format: z.enum(['iso', 'unix', 'readable', 'detailed']).default('iso').optional().describe('Output format preference')
+    timezone: z.string().default('UTC').nullable().describe('Timezone (e.g., "UTC", "America/New_York", "Europe/Istanbul")'),
+    format: z.enum(['iso', 'unix', 'readable', 'detailed']).default('iso').nullable().describe('Output format preference')
   }),
 
   execute: async ({ timezone = 'UTC', format = 'iso' }) => {
@@ -113,7 +113,7 @@ export const textAnalysisTool = tool({
   description: 'Analyze text for statistics like word count, character count, reading time, and more.',
   parameters: z.object({
     text: z.string().min(1).describe('Text to analyze'),
-    includeReadability: z.boolean().default(false).optional().describe('Include readability metrics')
+    includeReadability: z.boolean().default(false).nullable().describe('Include readability metrics')
   }),
 
   execute: async ({ text, includeReadability = false }) => {
@@ -173,7 +173,7 @@ export const jsonFormatterTool = tool({
   description: 'Format, validate, and pretty-print JSON data. Useful for working with API responses and structured data.',
   parameters: z.object({
     jsonString: z.string().min(1).describe('JSON string to format'),
-    indent: z.number().min(0).max(8).default(2).optional().describe('Indentation spaces (0-8)')
+    indent: z.number().min(0).max(8).default(2).nullable().describe('Indentation spaces (0-8)')
   }),
 
   execute: async ({ jsonString, indent = 2 }) => {

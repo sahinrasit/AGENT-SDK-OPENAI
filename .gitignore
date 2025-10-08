@@ -19,6 +19,8 @@ server.log
 .env
 .env.*
 !.env.example
+!.env.production
+!.env.staging
 
 # IDE & OS
 .DS_Store
@@ -48,3 +50,20 @@ web/.eslintcache
 # Misc
 .tmp/
 .cache/
+
+# PM2
+.pm2/
+logs/
+pids/
+*.pid
+*.seed
+
+# Production
+/database/backups/
+/ssl/*.key
+/ssl/*.pem
+
+# Monitoring data
+/prometheus_data/
+/grafana_data/
+/loki_data/
