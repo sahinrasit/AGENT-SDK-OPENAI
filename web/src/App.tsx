@@ -74,19 +74,19 @@ function App() {
   });
 
   const navigation = [
-    { id: 'chat', name: 'Chat', icon: MessageSquare, view: 'chat' as ViewType },
-    { id: 'mcp', name: 'MCP Servers', icon: Database, view: 'mcp' as ViewType },
-    { id: 'agents', name: 'Agents', icon: Users, view: 'agents' as ViewType },
-    { id: 'analytics', name: 'Analytics', icon: Activity, view: 'analytics' as ViewType },
-    { id: 'settings', name: 'Settings', icon: Settings, view: 'settings' as ViewType },
+    { id: 'chat', name: 'Sohbet', icon: MessageSquare, view: 'chat' as ViewType },
+    { id: 'mcp', name: 'MCP Sunucular', icon: Database, view: 'mcp' as ViewType },
+    { id: 'agents', name: 'Ajanlar', icon: Users, view: 'agents' as ViewType },
+    { id: 'analytics', name: 'Analitik', icon: Activity, view: 'analytics' as ViewType },
+    { id: 'settings', name: 'Ayarlar', icon: Settings, view: 'settings' as ViewType },
   ];
 
   const agentTypes: { type: AgentType; name: string; description: string }[] = [
-    { type: 'triage', name: 'AiCoE Assistant', description: 'AI-powered intelligent assistant' },
-    { type: 'planner', name: 'AiCoE Planner', description: 'Research and planning specialist' },
-    { type: 'search', name: 'AiCoE Search', description: 'Information gathering expert' },
-    { type: 'writer', name: 'AiCoE Writer', description: 'Content creation specialist' },
-    { type: 'customer-service', name: 'AiCoE Support', description: 'Customer service expert' },
+    { type: 'triage', name: 'AiCoE Asistan', description: 'Yapay zeka destekli akıllı asistan' },
+    { type: 'planner', name: 'AiCoE Planlayıcı', description: 'Araştırma ve planlama uzmanı' },
+    { type: 'search', name: 'AiCoE Arama', description: 'Bilgi toplama uzmanı' },
+    { type: 'writer', name: 'AiCoE Yazar', description: 'İçerik oluşturma uzmanı' },
+    { type: 'customer-service', name: 'AiCoE Destek', description: 'Müşteri hizmetleri uzmanı' },
   ];
 
   const handleMCPServerAction = (action: string, ...args: any[]) => {
@@ -117,16 +117,19 @@ function App() {
             isConnected={chat.isConnected}
             isLoading={chat.isLoading}
             streamingMessageId={chat.streamingMessageId}
+            pendingApprovals={chat.pendingApprovals}
+            onApproveToolCall={chat.approveToolCall}
+            onRejectToolCall={chat.rejectToolCall}
           />
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <Bot className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                Initializing Chat Session
+                Sohbet Oturumu Başlatılıyor
               </h3>
               <p className="text-gray-600">
-                {chat.isConnected ? 'Setting up your conversation...' : 'Connecting to server...'}
+                {chat.isConnected ? 'Konuşmanız hazırlanıyor...' : 'Sunucuya bağlanılıyor...'}
               </p>
             </div>
           </div>
@@ -151,7 +154,7 @@ function App() {
       case 'agents':
         return (
           <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Agent Management</h2>
+            <h2 className="text-2xl font-bold mb-6">Ajan Yönetimi</h2>
             <div className="grid gap-4 max-w-4xl">
               {agentTypes.map((agent) => (
                 <div
@@ -183,9 +186,9 @@ function App() {
       case 'analytics':
         return (
           <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Analytics Dashboard</h2>
+            <h2 className="text-2xl font-bold mb-6">Analitik Panel</h2>
             <div className="text-gray-600">
-              Analytics and monitoring features coming soon...
+              Analitik ve izleme özellikleri yakında gelecek...
             </div>
           </div>
         );
@@ -193,9 +196,9 @@ function App() {
       case 'settings':
         return (
           <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Settings</h2>
+            <h2 className="text-2xl font-bold mb-6">Ayarlar</h2>
             <div className="text-gray-600">
-              Configuration settings coming soon...
+              Yapılandırma ayarları yakında gelecek...
             </div>
           </div>
         );
@@ -246,7 +249,7 @@ function App() {
               <span className={clsx(
                 chat.isConnected ? 'text-green-600' : 'text-red-600'
               )}>
-                {chat.isConnected ? 'Connected' : 'Disconnected'}
+                {chat.isConnected ? 'Bağlı' : 'Bağlantı Kesildi'}
               </span>
             </div>
           </div>

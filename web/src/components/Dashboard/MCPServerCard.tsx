@@ -178,17 +178,17 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
                     ? 'bg-blue-100 text-blue-600 cursor-wait'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 )}
-                title="Discover real MCP tools"
+                title="MCP araçlarını keşfet"
               >
                 {isDiscovering ? (
                   <>
                     <RefreshCw className="w-3 h-3 inline animate-spin mr-1" />
-                    Discovering...
+                    Keşfediliyor...
                   </>
                 ) : (
                   <>
                     <Wrench className="w-3 h-3 inline mr-1" />
-                    Discover Tools
+                    Araçları Keşfet
                   </>
                 )}
               </button>
@@ -198,7 +198,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
               onClick={handleRefresh}
               disabled={isRefreshing}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-              title="Refresh server"
+              title="Sunucuyu yenile"
             >
               <RefreshCw className={clsx(
                 'w-4 h-4',
@@ -209,7 +209,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
             <button
               onClick={() => onConfigureServer?.(server.id)}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-              title="Configure server"
+              title="Sunucu ayarları"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -217,7 +217,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
             <button
               onClick={() => onDeleteServer?.(server.id)}
               className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-              title="Delete server"
+              title="Sunucuyu sil"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -231,20 +231,20 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
           <div className="text-2xl font-bold text-gray-900">
             {server.tools.length}
           </div>
-          <div className="text-sm text-gray-600">Total Tools</div>
+          <div className="text-sm text-gray-600">Toplam Araç</div>
         </div>
         <div className="text-center">
           <div className="text-2xl font-bold text-green-600">
             {connectedTools.length}
           </div>
-          <div className="text-sm text-gray-600">Active Tools</div>
+          <div className="text-sm text-gray-600">Aktif Araç</div>
         </div>
         <div className="text-center">
           <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
             <Clock className="w-4 h-4" />
-            {new Date(server.lastHealthCheck).toLocaleTimeString()}
+            {new Date(server.lastHealthCheck).toLocaleTimeString('tr-TR')}
           </div>
-          <div className="text-xs text-gray-500">Last Check</div>
+          <div className="text-xs text-gray-500">Son Kontrol</div>
         </div>
       </div>
 
@@ -258,7 +258,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
             <div className="flex items-center gap-2">
               <Wrench className="w-4 h-4 text-gray-600" />
               <span className="font-medium text-gray-700">
-                Tools ({server.tools.length})
+                Araçlar ({server.tools.length})
               </span>
             </div>
             {isExpanded ? (
@@ -288,7 +288,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
       {server.tools.length === 0 && isConnected && (
         <div className="mt-4 pt-4 border-t border-gray-100 text-center text-gray-500">
           <Wrench className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No tools available</p>
+          <p className="text-sm">Kullanılabilir araç bulunamadı</p>
         </div>
       )}
     </div>
@@ -322,7 +322,7 @@ const ToolItem: React.FC<ToolItemProps> = ({
             'badge text-xs',
             tool.enabled ? 'badge-success' : 'badge-error'
           )}>
-            {tool.enabled ? 'Enabled' : 'Disabled'}
+            {tool.enabled ? 'Aktif' : 'Pasif'}
           </span>
         </div>
         <p className="text-xs text-gray-600 mt-1">

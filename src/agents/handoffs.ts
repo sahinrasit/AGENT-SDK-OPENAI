@@ -2,6 +2,8 @@ import { Agent, handoff } from '@openai/agents';
 import { z } from 'zod';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
+import { webSearchTools } from '../tools/web-search.js';
+import { utilityTools } from '../tools/utilities.js';
 
 // Schemas for handoff data
 const researchHandoffSchema = z.object({
@@ -25,7 +27,12 @@ const writeHandoffSchema = z.object({
   length: z.enum(['brief', 'medium', 'detailed']).default('medium'),
 });
 
-// Specialized Research Agent
+/**
+ * Research Specialist Agent
+ *
+ * Handles comprehensive research requests with web search capabilities.
+ * Focuses on gathering, analyzing, and presenting well-sourced information.
+ */
 const researchSpecialistAgent = new Agent({
   name: 'Research Specialist',
   instructions: `You are a specialized research agent focused on gathering comprehensive information.
@@ -39,13 +46,18 @@ Your expertise includes:
 When you receive a research request:
 1. Understand the scope and requirements
 2. Plan your research strategy
-3. Use available tools to gather information
+3. Use available tools (web_search, search_news) to gather information
 4. Organize findings systematically
 5. Provide comprehensive, well-sourced information
 
+You have access to:
+- Web search and news search tools for current information
+- Text analysis tools for processing research materials
+- Date/time tools for temporal context
+
 Focus on accuracy, completeness, and relevance to the specific request.`,
   model: env.OPENAI_MODEL,
-  tools: [],
+  tools: [...webSearchTools, ...utilityTools],
 });
 
 // Specialized Analysis Agent

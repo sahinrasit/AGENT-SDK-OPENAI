@@ -91,8 +91,8 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">MCP Server Management</h1>
-            <p className="text-gray-600">Manage Model Context Protocol servers and tools</p>
+            <h1 className="text-2xl font-bold text-gray-900">MCP Sunucu Yönetimi</h1>
+            <p className="text-gray-600">Model Context Protocol sunucularını ve araçlarını yönetin</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -102,7 +102,7 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
               className="btn btn-secondary flex items-center gap-2"
             >
               <RefreshCw className={clsx('w-4 h-4', isRefreshing && 'animate-spin')} />
-              Refresh All
+              Tümünü Yenile
             </button>
 
             <button
@@ -110,12 +110,12 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
               className="btn btn-secondary flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
-              Export
+              Dışa Aktar
             </button>
 
             <label className="btn btn-secondary flex items-center gap-2 cursor-pointer">
               <Upload className="w-4 h-4" />
-              Import
+              İçe Aktar
               <input
                 type="file"
                 accept=".json"
@@ -129,7 +129,7 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
               className="btn btn-primary flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              Add Server
+              Sunucu Ekle
             </button>
           </div>
         </div>
@@ -138,27 +138,27 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <div className="bg-gray-50 rounded-lg p-4 text-center">
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-            <div className="text-sm text-gray-600">Total Servers</div>
+            <div className="text-sm text-gray-600">Toplam Sunucu</div>
           </div>
           <div className="bg-green-50 rounded-lg p-4 text-center">
             <div className="text-2xl font-bold text-green-600">{stats.connected}</div>
-            <div className="text-sm text-gray-600">Connected</div>
+            <div className="text-sm text-gray-600">Bağlı</div>
           </div>
           <div className="bg-gray-50 rounded-lg p-4 text-center">
             <div className="text-2xl font-bold text-gray-600">{stats.disconnected}</div>
-            <div className="text-sm text-gray-600">Disconnected</div>
+            <div className="text-sm text-gray-600">Bağlı Değil</div>
           </div>
           <div className="bg-red-50 rounded-lg p-4 text-center">
             <div className="text-2xl font-bold text-red-600">{stats.error}</div>
-            <div className="text-sm text-gray-600">Errors</div>
+            <div className="text-sm text-gray-600">Hata</div>
           </div>
           <div className="bg-blue-50 rounded-lg p-4 text-center">
             <div className="text-2xl font-bold text-blue-600">{stats.totalTools}</div>
-            <div className="text-sm text-gray-600">Total Tools</div>
+            <div className="text-sm text-gray-600">Toplam Araç</div>
           </div>
           <div className="bg-green-50 rounded-lg p-4 text-center">
             <div className="text-2xl font-bold text-green-600">{stats.activeTools}</div>
-            <div className="text-sm text-gray-600">Active Tools</div>
+            <div className="text-sm text-gray-600">Aktif Araç</div>
           </div>
         </div>
       </div>
@@ -171,7 +171,7 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
             <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search servers..."
+              placeholder="Sunucu ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-10"
@@ -186,10 +186,10 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
               onChange={(e) => setFilter(e.target.value as ServerFilter)}
               className="input w-auto"
             >
-              <option value="all">All Servers</option>
-              <option value="connected">Connected</option>
-              <option value="disconnected">Disconnected</option>
-              <option value="error">Error</option>
+              <option value="all">Tüm Sunucular</option>
+              <option value="connected">Bağlı</option>
+              <option value="disconnected">Bağlı Değil</option>
+              <option value="error">Hatalı</option>
             </select>
           </div>
         </div>
@@ -203,28 +203,28 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
               <>
                 <Server className="w-16 h-16 text-gray-300 mb-4" />
                 <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  No MCP Servers
+                  MCP Sunucusu Yok
                 </h3>
                 <p className="text-gray-600 mb-6 max-w-md">
-                  Get started by adding your first Model Context Protocol server.
-                  Servers provide tools and capabilities for your agents.
+                  İlk Model Context Protocol sunucunuzu ekleyerek başlayın.
+                  Sunucular, ajanlarınız için araçlar ve yetenekler sağlar.
                 </p>
                 <button
                   onClick={() => setFormOpen(true)}
                   className="btn btn-primary flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Your First Server
+                  İlk Sunucuyu Ekle
                 </button>
               </>
             ) : (
               <>
                 <Search className="w-16 h-16 text-gray-300 mb-4" />
                 <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  No Servers Found
+                  Sunucu Bulunamadı
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  No servers match your current search and filter criteria.
+                  Arama ve filtre kriterlerinize uyan sunucu bulunamadı.
                 </p>
                 <button
                   onClick={() => {
@@ -233,7 +233,7 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
                   }}
                   className="btn btn-secondary"
                 >
-                  Clear Filters
+                  Filtreleri Temizle
                 </button>
               </>
             )}
@@ -284,17 +284,17 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
             <AlertTriangle className="w-5 h-5 text-red-600" />
             <div className="flex-1">
               <span className="text-red-800 font-medium">
-                {stats.error} server{stats.error > 1 ? 's' : ''} experiencing issues
+                {stats.error} sunucu sorun yaşıyor
               </span>
               <span className="text-red-700 ml-2">
-                Check server configurations and network connectivity.
+                Sunucu yapılandırmalarını ve ağ bağlantısını kontrol edin.
               </span>
             </div>
             <button
               onClick={handleRefreshAll}
               className="text-red-700 hover:text-red-800 underline text-sm"
             >
-              Refresh All
+              Tümünü Yenile
             </button>
           </div>
         </div>
@@ -305,7 +305,7 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-green-600" />
             <span className="text-green-800 font-medium">
-              All servers are running smoothly
+              Tüm sunucular sorunsuz çalışıyor
             </span>
           </div>
         </div>

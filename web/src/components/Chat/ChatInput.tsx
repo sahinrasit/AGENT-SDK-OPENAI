@@ -13,7 +13,7 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   isLoading = false,
-  placeholder = "Type your message...",
+  placeholder = "Mesajınızı yazın...",
   disabled = false,
   onStopGeneration
 }) => {
@@ -121,7 +121,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               type="button"
               onClick={onStopGeneration}
               className="flex-shrink-0 p-3 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              title="Stop generation"
+              title="Üretimi durdur"
             >
               <Square className="w-5 h-5" />
             </button>
@@ -136,7 +136,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   ? 'bg-primary-600 text-white hover:bg-primary-700'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               )}
-              title="Send message"
+              title="Mesaj gönder"
             >
               <Send className="w-5 h-5" />
             </button>
@@ -147,7 +147,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         {isRecording && (
           <div className="flex items-center justify-center mt-3 text-red-600">
             <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse mr-2"></div>
-            <span className="text-sm font-medium">Recording...</span>
+            <span className="text-sm font-medium">Kaydediliyor...</span>
           </div>
         )}
 
@@ -159,21 +159,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               <div className="typing-dot"></div>
               <div className="typing-dot"></div>
             </div>
-            <span className="text-sm">Agent is processing...</span>
+            <span className="text-sm">Ajan düşünüyor...</span>
           </div>
         )}
 
         {/* Quick actions */}
         <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
           <div className="flex items-center gap-4">
-            <span>Press Enter to send, Shift+Enter for new line</span>
+            <span>Göndermek için Enter, yeni satır için Shift+Enter</span>
           </div>
           <div className="flex items-center gap-2">
             <span className={clsx(
               'w-2 h-2 rounded-full',
               disabled ? 'bg-red-400' : 'bg-green-400'
             )}></span>
-            <span>{disabled ? 'Offline' : 'Connected'}</span>
+            <span>{disabled ? 'Çevrimdışı' : 'Bağlı'}</span>
           </div>
         </div>
       </form>

@@ -3,9 +3,9 @@ import { MCPServer } from '../types/agent';
 import { useSocket } from './useSocket';
 
 export type McpServerConfig =
-  | { type: 'hosted'; name: string; serverLabel: string; serverUrl: string; requiresHumanApproval?: boolean; authToken?: string; tools?: string[] }
-  | { type: 'http'; name: string; url: string; headers?: Record<string, string>; timeout?: number; retries?: number; tools?: string[] }
-  | { type: 'stdio'; name: string; command: string; args?: string[]; workingDirectory?: string; env?: Record<string, string>; tools?: string[] };
+  | { type: 'hosted'; name: string; serverLabel: string; serverUrl: string; requiresHumanApproval?: boolean; authToken?: string; }
+  | { type: 'http'; name: string; url: string; headers?: Record<string, string>; timeout?: number; retries?: number; }
+  | { type: 'stdio'; name: string; command: string; args?: string[]; workingDirectory?: string; env?: Record<string, string>; };
 
 export const useMcp = () => {
   const { isConnected, emit, on, off } = useSocket({ autoConnect: true });
@@ -79,7 +79,7 @@ export const useMcp = () => {
       setServers(prev => {
         const serverId = server.id || server.name;
         const idx = prev.findIndex(s => s.id === serverId);
-        
+
         const base: MCPServer = {
           id: serverId,
           name: server.name || serverId,
@@ -90,7 +90,7 @@ export const useMcp = () => {
           lastHealthCheck: new Date(),
           metadata: server.metadata || {}
         };
-        
+
         if (idx >= 0) {
           // Update existing server
           const next = [...prev];
@@ -106,20 +106,16 @@ export const useMcp = () => {
     };
 
     on('mcp:status', handleStatus);
-    
-    // Load servers only once when connected
-    loadServersAndTools();
-    
-    // Set up periodic refresh (every 60 seconds instead of continuous)
-    const refreshInterval = setInterval(() => {
+
+    // Load servers only once when connected - use ref to prevent infinite loop
+    if (!isLoadingRef.current) {
       loadServersAndTools();
-    }, 60000); // 60 seconds
+    }
 
     return () => {
       off('mcp:status', handleStatus);
-      clearInterval(refreshInterval);
     };
-  }, [isConnected, on, off]); // Removed loadServersAndTools from dependencies
+  }, [isConnected, on, off]) // Removed loadServersAndTools from dependencies
 
   const connectServer = useCallback((config: McpServerConfig) => {
     if (!isConnected) return;
@@ -129,15 +125,38 @@ export const useMcp = () => {
     setTimeout(() => setLoading(false), 400);
   }, [isConnected, emit]);
 
-  const disconnectServer = useCallback((serverId: string) => {
+  const disconnectServer = useCallback(async (serverId: string) => {
     if (!isConnected) return;
-    setLoading(true);
-    setError(null);
-    emit('mcp:disconnect', { serverId });
-    // optimistic update
-    setServers(prev => prev.map(s => s.id === serverId ? { ...s, status: 'disconnected' } : s));
-    setTimeout(() => setLoading(false), 300);
-  }, [isConnected, emit]);
+
+    // Confirm before deleting
+    if (!confirm(`"${serverId}" sunucusunu silmek istediğinize emin misiniz?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Delete from mcp.json via API
+      const response = await fetch(`/api/mcp/config/${encodeURIComponent(serverId)}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sunucu silinirken hata oluştu: ${response.statusText}`);
+      }
+
+      // Emit disconnect event
+      emit('mcp:disconnect', { serverId });
+
+      // Reload servers to reflect the changes
+      await loadServersAndTools();
+      setLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'MCP sunucusu silinemedi');
+      setLoading(false);
+    }
+  }, [isConnected, emit, loadServersAndTools]);
 
   const addServer = useCallback(async (config: McpServerConfig) => {
     // Duplicate guard: skip if already exists

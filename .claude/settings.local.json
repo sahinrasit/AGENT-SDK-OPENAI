@@ -6,7 +6,10 @@
       "Bash(pnpm:*)",
       "Bash(npx tailwindcss init:*)",
       "Bash(curl:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(killall:*)"
     ],
     "deny": [],
     "ask": []

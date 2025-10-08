@@ -1,8 +1,20 @@
 import { Agent } from '@openai/agents';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
+import { webSearchTools } from '../tools/web-search.js';
+import { utilityTools } from '../tools/utilities.js';
 
-// Planner Agent - Suggests research approach and search terms
+/**
+ * Research Planner Agent
+ *
+ * Specialized agent for breaking down research topics and planning search strategies.
+ * Uses utility tools for analysis and organization.
+ *
+ * @example
+ * ```typescript
+ * const result = await run(plannerAgent, 'Research artificial intelligence trends');
+ * ```
+ */
 export const plannerAgent = new Agent({
   name: 'Research Planner',
   instructions: `You are a research planning specialist. Your role is to:
@@ -18,11 +30,24 @@ When given a research topic, provide:
 - Suggested order for conducting the searches
 - Key questions that the research should answer
 
+You have access to datetime and text analysis tools to help structure your planning.
+
 Be strategic and thorough. Think about what information would be most valuable for understanding the topic comprehensively.`,
   model: env.OPENAI_MODEL,
+  tools: [...utilityTools], // Date/time and text analysis tools for planning
 });
 
-// Search Agent - Performs web searches and summarizes results
+/**
+ * Web Search Agent
+ *
+ * Specialized agent for performing web searches and synthesizing information.
+ * Has access to web search and news search tools.
+ *
+ * @example
+ * ```typescript
+ * const result = await run(searchAgent, 'Search for AI trends 2024');
+ * ```
+ */
 export const searchAgent = new Agent({
   name: 'Web Search Specialist',
   instructions: `You are a web search and information synthesis specialist. Your role is to:
@@ -33,18 +58,31 @@ export const searchAgent = new Agent({
 4. **Extract Key Points**: Identify the most important facts, insights, and data
 
 For each search query you receive:
-- Perform a thorough web search
+- Perform a thorough web search using the web_search tool
+- Use search_news tool for current events and time-sensitive information
 - Evaluate the credibility and relevance of results
 - Summarize the key findings in a structured format
 - Highlight any conflicting information or gaps
 - Note the sources for important claims
 
+You also have access to text analysis and datetime tools to help organize findings.
+
 Focus on factual accuracy and provide balanced, comprehensive summaries.`,
   model: env.OPENAI_MODEL,
-  tools: [],
+  tools: [...webSearchTools, ...utilityTools], // Web search + utilities
 });
 
-// Writer Agent - Compiles research into comprehensive reports
+/**
+ * Research Report Writer Agent
+ *
+ * Specialized agent for compiling research into comprehensive, well-structured reports.
+ * Has access to text analysis and formatting tools.
+ *
+ * @example
+ * ```typescript
+ * const result = await run(writerAgent, 'Write a report on AI trends based on research...');
+ * ```
+ */
 export const writerAgent = new Agent({
   name: 'Research Report Writer',
   instructions: `You are a research report writer who creates comprehensive, well-structured documents. Your role is to:
@@ -62,8 +100,16 @@ When creating research reports:
 - Include relevant examples or case studies when applicable
 - Use clear headings and structure for readability
 
+You have access to text analysis tools to help with:
+- Word count and readability metrics
+- Structure analysis
+- Quality assessment
+
+You also have JSON formatting and datetime tools for organizing data.
+
 Aim for comprehensive yet accessible reports that provide real value to the reader.`,
   model: env.OPENAI_MODEL,
+  tools: [...utilityTools], // Text analysis and formatting tools
 });
 
 // Agent registry for easy access and management

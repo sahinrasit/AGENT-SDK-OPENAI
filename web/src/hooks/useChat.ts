@@ -9,6 +9,13 @@ interface UseChatOptions {
   autoConnect?: boolean;
 }
 
+interface PendingApproval {
+  id: string;
+  toolName: string;
+  parameters: any;
+  timestamp: Date;
+}
+
 export const useChat = (options: UseChatOptions) => {
   const { sessionId: initialSessionId, agentType, autoConnect = true } = options;
 
@@ -17,6 +24,7 @@ export const useChat = (options: UseChatOptions) => {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
 
   // Chat persistence hook
   const { saveSession, loadSession } = useChatPersistence();
@@ -125,10 +133,10 @@ export const useChat = (options: UseChatOptions) => {
       messageId: string;
       chunk: string;
       isComplete: boolean;
+      isStart?: boolean;
+      error?: string;
     }) => {
-      const { messageId, chunk, isComplete } = data;
-
-      console.log('🌊 Streaming chunk:', { messageId, chunk: chunk.substring(0, 50), isComplete });
+      const { messageId, chunk, isComplete, isStart, error } = data;
 
       // Ensure chunk is a string
       const chunkText = typeof chunk === 'string' ? chunk : String(chunk || '');
@@ -137,31 +145,42 @@ export const useChat = (options: UseChatOptions) => {
         const existingIndex = prev.findIndex(m => m.id === messageId);
 
         if (existingIndex >= 0) {
-          // Update existing message
+          // Update existing message with new chunk - REAL-TIME UPDATE
           const updated = [...prev];
+          const currentContent = updated[existingIndex].content;
+
           updated[existingIndex] = {
             ...updated[existingIndex],
-            content: updated[existingIndex].content + chunkText,
+            content: currentContent + chunkText, // Append each chunk immediately
             isStreaming: !isComplete
           };
           return updated;
-        } else {
-          // Create new streaming message
+        } else if (isStart || chunkText) {
+          // Create new streaming message (Cursor-like: show empty message then fill)
           const newMessage: Message = {
             id: messageId,
             type: 'agent',
-            content: chunkText,
+            content: chunkText, // Start with first chunk
             timestamp: new Date(),
             agentType,
             isStreaming: !isComplete
           };
           return [...prev, newMessage];
         }
+
+        return prev;
       });
 
       if (isComplete) {
+        // Remove thinking indicator
+        setMessages(prev => prev.filter(m => m.type !== 'thinking' || m.id !== messageId));
         setStreamingMessageId(null);
         setIsLoading(false);
+
+        if (error) {
+          console.error('❌ Streaming error:', error);
+          setError(`Streaming hatası: ${error}`);
+        }
       } else {
         setStreamingMessageId(messageId);
       }
@@ -260,6 +279,30 @@ export const useChat = (options: UseChatOptions) => {
       setStreamingMessageId(null);
     };
 
+    const handleToolApprovalRequest = (data: {
+      approvalId: string;
+      toolName: string;
+      parameters: any;
+    }) => {
+      setPendingApprovals(prev => [
+        ...prev,
+        {
+          id: data.approvalId,
+          toolName: data.toolName,
+          parameters: data.parameters,
+          timestamp: new Date()
+        }
+      ]);
+    };
+
+    const handleToolApprovalConfirmed = (data: {
+      approvalId: string;
+      approved: boolean;
+      toolName: string;
+    }) => {
+      setPendingApprovals(prev => prev.filter(a => a.id !== data.approvalId));
+    };
+
     // Register event listeners
     on('session:created', handleSessionCreated);
     on('message:received', handleMessageReceived);
@@ -267,6 +310,8 @@ export const useChat = (options: UseChatOptions) => {
     on('agent:thinking', handleAgentThinking);
     on('tool:call:start', handleToolCallStart);
     on('tool:call:complete', handleToolCallComplete);
+    on('tool:approval:request', handleToolApprovalRequest);
+    on('tool:approval:confirmed', handleToolApprovalConfirmed);
     on('error', handleError);
 
     // Cleanup
@@ -277,6 +322,8 @@ export const useChat = (options: UseChatOptions) => {
       off('agent:thinking', handleAgentThinking);
       off('tool:call:start', handleToolCallStart);
       off('tool:call:complete', handleToolCallComplete);
+      off('tool:approval:request', handleToolApprovalRequest);
+      off('tool:approval:confirmed', handleToolApprovalConfirmed);
       off('error', handleError);
     };
   }, [isConnected, agentType, on, off]);
@@ -299,11 +346,12 @@ export const useChat = (options: UseChatOptions) => {
     setIsLoading(true);
     setError(null);
 
-    // Send to server
+    // Send to server with streaming ALWAYS enabled (Cursor experience)
     emit('agent:message', {
       message: content,
       agentType,
-      sessionId: session.id
+      sessionId: session.id,
+      stream: true // Always stream for real-time response
     });
   }, [isConnected, session, isLoading, agentType, emit]);
 
@@ -332,6 +380,26 @@ export const useChat = (options: UseChatOptions) => {
     }
   }, [messages, sendMessage]);
 
+  const approveToolCall = useCallback((approvalId: string) => {
+    if (!session) return;
+
+    emit('tool:approval:response', {
+      sessionId: session.id,
+      approvalId,
+      approved: true
+    });
+  }, [session, emit]);
+
+  const rejectToolCall = useCallback((approvalId: string) => {
+    if (!session) return;
+
+    emit('tool:approval:response', {
+      sessionId: session.id,
+      approvalId,
+      approved: false
+    });
+  }, [session, emit]);
+
   return {
     // Session state
     session: session ? { ...session, messages } : null,
@@ -340,11 +408,14 @@ export const useChat = (options: UseChatOptions) => {
     streamingMessageId,
     error: error || connectionError,
     isConnected,
+    pendingApprovals,
 
     // Actions
     sendMessage,
     stopGeneration,
     clearMessages,
-    retryLastMessage
+    retryLastMessage,
+    approveToolCall,
+    rejectToolCall
   };
 };

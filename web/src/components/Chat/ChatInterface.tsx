@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
+import { ToolApprovalCard } from './ToolApprovalCard';
 import { Message, AgentType, ChatSession } from '../../types/agent';
 import { Bot, Users, Settings, Activity } from 'lucide-react';
 import { clsx } from 'clsx';
+
+interface PendingApproval {
+  id: string;
+  toolName: string;
+  parameters: any;
+  timestamp: Date;
+}
 
 interface ChatInterfaceProps {
   session: ChatSession;
@@ -12,43 +20,46 @@ interface ChatInterfaceProps {
   isConnected?: boolean;
   isLoading?: boolean;
   streamingMessageId?: string;
+  pendingApprovals?: PendingApproval[];
+  onApproveToolCall?: (approvalId: string) => void;
+  onRejectToolCall?: (approvalId: string) => void;
 }
 
 const getAgentInfo = (agentType: AgentType) => {
   switch (agentType) {
     case 'planner':
       return {
-        name: 'AiCoE Planner',
-        description: 'AI-powered research and planning specialist',
+        name: 'AiCoE Planlayıcı',
+        description: 'Yapay zeka destekli araştırma ve planlama uzmanı',
         color: 'purple'
       };
     case 'search':
       return {
-        name: 'AiCoE Search',
-        description: 'Intelligent information gathering expert',
+        name: 'AiCoE Arama',
+        description: 'Akıllı bilgi toplama uzmanı',
         color: 'cyan'
       };
     case 'writer':
       return {
-        name: 'AiCoE Writer',
-        description: 'Advanced content creation specialist',
+        name: 'AiCoE Yazar',
+        description: 'Gelişmiş içerik oluşturma uzmanı',
         color: 'green'
       };
     case 'triage':
       return {
-        name: 'AiCoE Assistant',
-        description: 'AI-powered intelligent assistant by IBTech',
+        name: 'AiCoE Asistan',
+        description: 'IBTech yapay zeka destekli akıllı asistan',
         color: 'blue'
       };
     case 'customer-service':
       return {
-        name: 'AiCoE Support',
-        description: 'AI-driven customer service expert',
+        name: 'AiCoE Destek',
+        description: 'Yapay zeka destekli müşteri hizmetleri uzmanı',
         color: 'indigo'
       };
     default:
       return {
-        name: 'AiCoE Agent',
+        name: 'AiCoE Ajan',
         description: 'AI Center of Excellence - IBTech',
         color: 'gray'
       };
@@ -61,7 +72,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onStopGeneration,
   isConnected = false,
   isLoading = false,
-  streamingMessageId
+  streamingMessageId,
+  pendingApprovals = [],
+  onApproveToolCall,
+  onRejectToolCall
 }) => {
   const [messages, setMessages] = useState<Message[]>(session.messages);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -115,7 +129,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 isConnected ? 'bg-green-400' : 'bg-red-400'
               )}></div>
               <span className="text-sm text-gray-600">
-                {isConnected ? 'Connected' : 'Disconnected'}
+                {isConnected ? 'Bağlı' : 'Bağlantı Kesildi'}
               </span>
             </div>
 
@@ -147,10 +161,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <Bot className="w-8 h-8" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Start a conversation with {agentInfo.name}
+              {agentInfo.name} ile sohbete başlayın
             </h3>
             <p className="text-gray-600 mb-6 max-w-md">
-              {agentInfo.description}. Ask me anything and I'll help you get started.
+              {agentInfo.description}. Size yardımcı olmak için buradayım.
             </p>
 
             {/* Suggested prompts */}
@@ -175,6 +189,24 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 isStreaming={streamingMessageId === message.id}
               />
             ))}
+
+            {/* Tool Approval Cards */}
+            {pendingApprovals.length > 0 && onApproveToolCall && onRejectToolCall && (
+              <div className="space-y-3">
+                {pendingApprovals.map((approval) => (
+                  <ToolApprovalCard
+                    key={approval.id}
+                    approvalId={approval.id}
+                    toolName={approval.toolName}
+                    parameters={approval.parameters}
+                    timestamp={approval.timestamp}
+                    onApprove={onApproveToolCall}
+                    onReject={onRejectToolCall}
+                  />
+                ))}
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -196,39 +228,39 @@ function getSuggestedPrompts(agentType: AgentType): string[] {
   switch (agentType) {
     case 'planner':
       return [
-        "Help me create a research plan for artificial intelligence trends",
-        "What's the best approach to research competitive analysis?",
-        "Plan a comprehensive study on renewable energy technologies"
+        "Yapay zeka trendleri için bir araştırma planı oluşturmama yardım et",
+        "Rekabet analizi yapmak için en iyi yaklaşım nedir?",
+        "Yenilenebilir enerji teknolojileri hakkında kapsamlı bir çalışma planla"
       ];
     case 'search':
       return [
-        "Search for the latest developments in quantum computing",
-        "Find information about sustainable business practices",
-        "Research current trends in remote work technology"
+        "Kuantum bilişimdeki son gelişmeleri ara",
+        "Sürdürülebilir iş uygulamaları hakkında bilgi bul",
+        "Uzaktan çalışma teknolojilerindeki güncel trendleri araştır"
       ];
     case 'writer':
       return [
-        "Write a comprehensive report on digital transformation",
-        "Create an executive summary of market research findings",
-        "Draft a technical documentation for our new API"
+        "Dijital dönüşüm hakkında kapsamlı bir rapor yaz",
+        "Pazar araştırması bulgularının yönetici özeti oluştur",
+        "Yeni API'miz için teknik dokümantasyon hazırla"
       ];
     case 'triage':
       return [
-        "I need help with a complex research project",
-        "Can you analyze some business data for me?",
-        "I want to create a detailed report on market trends"
+        "Karmaşık bir araştırma projesinde yardıma ihtiyacım var",
+        "Bazı iş verilerini analiz edebilir misin?",
+        "Pazar trendleri hakkında detaylı bir rapor oluşturmak istiyorum"
       ];
     case 'customer-service':
       return [
-        "I have a question about my billing",
-        "I'm experiencing technical issues",
-        "Can you help me understand your services?"
+        "Faturalandırma hakkında bir sorum var",
+        "Teknik sorunlar yaşıyorum",
+        "Hizmetlerinizi anlamama yardımcı olabilir misiniz?"
       ];
     default:
       return [
-        "How can you help me today?",
-        "What are your capabilities?",
-        "Tell me about your features"
+        "Bugün size nasıl yardımcı olabilirim?",
+        "Yetenekleriniz nelerdir?",
+        "Özelliklerinizden bahseder misiniz?"
       ];
   }
 }

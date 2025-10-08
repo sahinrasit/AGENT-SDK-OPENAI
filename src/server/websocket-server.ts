@@ -25,6 +25,17 @@ interface ChatSession {
   startTime: Date;
   lastActivity: Date;
   contextAware: boolean;
+  pendingApprovals?: Map<string, PendingApproval>;
+  agentState?: any; // For resuming interrupted runs
+}
+
+interface PendingApproval {
+  id: string;
+  toolName: string;
+  parameters: any;
+  timestamp: Date;
+  resolved: boolean;
+  approved?: boolean;
 }
 
 interface ConnectedClient {
@@ -149,78 +160,69 @@ export class WebSocketServer {
       try {
         const allTools: any[] = [];
 
-        logger.info(`📊 MCP Status: ${this.mcpServers.length} servers, ${this.mcpTools.length} hosted tools`);
+        logger.info(`📊 MCP Status: ${this.mcpServers.length} HTTP servers, ${this.mcpTools.length} hosted tools`);
 
-        // Get tools from all servers
-        for (const server of this.mcpServers) {
+        // Get tools from HTTP MCP servers using getAllMcpTools
+        if (this.mcpServers.length > 0) {
           try {
-            const tools = await server.listTools();
-            allTools.push({
-              serverId: server.name,
-              serverType: 'http',
-              tools: tools || []
-            });
-          } catch (e) {
-            logger.error(`Failed to list tools for ${server.name}:`, e);
-          }
-        }
+            const httpTools = await getAllMcpTools(this.mcpServers);
 
-        // For hosted MCP tools, we need to discover them by calling the hosted server
-        // Or use cached tools from mcpToolRegistry
-        const configs = await this.readMcpConfig();
-        for (const cfg of configs) {
-          if (cfg.type === 'hosted') {
-            // Check if we have cached tools for this server
-            const cachedTools = this.mcpToolRegistry.get(cfg.serverLabel || cfg.name);
+            // Group tools by server
+            const toolsByServer = new Map<string, any[]>();
+            for (const tool of httpTools) {
+              const serverName = tool.serverLabel || 'unknown';
+              if (!toolsByServer.has(serverName)) {
+                toolsByServer.set(serverName, []);
+              }
+              toolsByServer.get(serverName)!.push(tool);
+            }
 
-            if (cachedTools && cachedTools.length > 0) {
+            // Add to results
+            for (const [serverName, tools] of toolsByServer.entries()) {
               allTools.push({
-                serverId: cfg.serverLabel || cfg.name,
-                serverType: 'hosted',
-                tools: cachedTools.map((t: any) => ({
-                  name: t.name || t.toolName || 'unknown',
-                  description: t.description || t.desc || '',
-                  inputSchema: t.inputSchema || t.parameters || {}
+                serverId: serverName,
+                serverType: 'http',
+                tools: tools.map(t => ({
+                  name: t.name,
+                  description: t.description || '',
+                  inputSchema: t.inputSchema || {}
                 }))
               });
-            } else {
-              // Show default MCP tools for hosted servers
-              // Actual tools will be discovered when agent first uses them
-              allTools.push({
-                serverId: cfg.serverLabel || cfg.name,
-                serverType: 'hosted',
-                tools: [
-                  {
-                    name: 'mcp_call_tool',
-                    description: 'Call any tool available on the MCP server',
-                    inputSchema: {
-                      type: 'object',
-                      properties: {
-                        toolName: { type: 'string', description: 'Name of the tool to call' },
-                        arguments: { type: 'object', description: 'Tool arguments' }
-                      },
-                      required: ['toolName']
-                    }
-                  },
-                  {
-                    name: 'mcp_list_tools',
-                    description: 'List all available tools on the MCP server',
-                    inputSchema: { type: 'object', properties: {} }
-                  }
-                ]
-              });
             }
+          } catch (e) {
+            logger.error('Failed to get tools from HTTP MCP servers:', e);
           }
         }
 
-        // Also include cached tools from registry
-        for (const [label, tools] of this.mcpToolRegistry.entries()) {
-          if (!allTools.some(t => t.serverId === label)) {
-            allTools.push({
-              serverId: label,
-              serverType: 'hosted',
-              tools: tools || []
-            });
+        // Get tools from Hosted MCP servers using getAllMcpTools
+        if (this.mcpTools.length > 0) {
+          try {
+            const hostedTools = await getAllMcpTools(this.mcpTools);
+
+            // Group tools by server
+            const toolsByServer = new Map<string, any[]>();
+            for (const tool of hostedTools) {
+              const serverName = tool.serverLabel || 'unknown';
+              if (!toolsByServer.has(serverName)) {
+                toolsByServer.set(serverName, []);
+              }
+              toolsByServer.get(serverName)!.push(tool);
+            }
+
+            // Add to results
+            for (const [serverName, tools] of toolsByServer.entries()) {
+              allTools.push({
+                serverId: serverName,
+                serverType: 'hosted',
+                tools: tools.map(t => ({
+                  name: t.name,
+                  description: t.description || '',
+                  inputSchema: t.inputSchema || {}
+                }))
+              });
+            }
+          } catch (e) {
+            logger.error('Failed to get tools from Hosted MCP servers:', e);
           }
         }
 
@@ -288,6 +290,42 @@ export class WebSocketServer {
         res.json({ ok: true });
       } catch (e: any) {
         res.status(500).json({ error: e?.message || 'connect failed' });
+      }
+    });
+
+    // Delete MCP server from mcp.json
+    this.app.delete('/api/mcp/config/:name', async (req, res) => {
+      const name = req.params.name;
+      if (!name) {
+        return res.status(400).json({ error: 'server name required' });
+      }
+
+      try {
+        // Read current config
+        const current = await this.readMcpConfig();
+
+        // Filter out the server to delete
+        const filtered = current.filter(c => c.name !== name);
+
+        if (current.length === filtered.length) {
+          return res.status(404).json({ error: 'server not found' });
+        }
+
+        // Write updated config
+        await this.writeMcpConfig(filtered);
+
+        // Remove from in-memory arrays
+        this.mcpServers = this.mcpServers.filter(s => s.name !== name);
+        this.mcpTools = this.mcpTools.filter((t: any) => {
+          const label = t.serverLabel || t.name;
+          return label !== name;
+        });
+
+        logger.info(`🗑️ MCP server deleted: ${name}`);
+        res.json({ ok: true, deleted: name });
+      } catch (e: any) {
+        logger.error(`❌ Failed to delete MCP server ${name}:`, e);
+        res.status(500).json({ error: e?.message || 'delete failed' });
       }
     });
   }
@@ -405,25 +443,26 @@ export class WebSocketServer {
           const thinkingMessageId = uuidv4();
           socket.emit('agent:thinking', {
             messageId: thinkingMessageId,
-            step: 'Analyzing your request...'
+            step: 'İsteğiniz analiz ediliyor...'
           });
 
           let agentResponse: any;
           let accumulatedContent = '';
           const responseMessageId = uuidv4();
+          const enableStreaming = data.stream !== false; // Default to true
 
           if (session.contextAware) {
             // Emit thinking steps
             socket.emit('agent:thinking', {
               messageId: thinkingMessageId,
-              step: 'Loading conversation context and memories'
+              step: 'Konuşma bağlamı ve hafıza yükleniyor'
             });
 
             // Use context-aware agent with MCP tools
             logger.info(`🔧 Creating agent with ${this.mcpServers.length} MCP servers and ${this.mcpTools.length} MCP tools`);
             const contextAgent = this.getContextAwareAgent(
               data.agentType,
-              session.userId, 
+              session.userId,
               session.conversationId,
               this.mcpServers,
               this.mcpTools
@@ -432,7 +471,7 @@ export class WebSocketServer {
             // Process with context-aware agent
             socket.emit('agent:thinking', {
               messageId: thinkingMessageId,
-              step: 'Generating response with available tools...'
+              step: 'Mevcut araçlarla yanıt oluşturuluyor...'
             });
 
             agentResponse = await contextAgent.processInput(data.message, {
@@ -479,14 +518,8 @@ export class WebSocketServer {
               }
             }
 
-            // Stream response if requested
-            if (data.stream) {
-              socket.emit('message:streaming', {
-                messageId: responseMessageId,
-                chunk: '',
-                isComplete: false
-              });
-
+            // Stream response if enabled
+            if (enableStreaming && accumulatedContent) {
               const words = accumulatedContent.split(' ');
               for (let i = 0; i < words.length; i++) {
                 const chunk = (i === 0 ? '' : ' ') + words[i];
@@ -495,36 +528,109 @@ export class WebSocketServer {
                   chunk,
                   isComplete: false
                 });
-                await new Promise(resolve => setTimeout(resolve, 50));
+                await new Promise(resolve => setTimeout(resolve, 30));
               }
             }
           } else {
-            // Use traditional agent
+            // Use traditional agent with real OpenAI streaming
             const agent = this.getAgentByType(data.agentType);
             if (!agent) {
               socket.emit('error', { message: 'Agent not found' });
               return;
             }
 
-            // Run agent with streaming if requested
-            const result = await run(agent, data.message, { stream: data.stream || false } as any);
+            socket.emit('agent:thinking', {
+              messageId: thinkingMessageId,
+              step: 'Yanıt oluşturuluyor...'
+            });
 
-            if (data.stream) {
-              const textStream = (result as any).toTextStream();
+            // Run agent with streaming - ALWAYS STREAM for real-time experience
+            const result = await run(agent, data.message, { stream: true } as any);
 
-              for await (const chunk of textStream) {
-                accumulatedContent += chunk;
+            // Process OpenAI stream events in real-time (Cursor-like experience)
+            try {
+              // Emit initial empty message to show typing started
+              socket.emit('message:streaming', {
+                messageId: responseMessageId,
+                chunk: '',
+                isComplete: false,
+                isStart: true
+              });
 
-                socket.emit('message:streaming', {
-                  messageId: responseMessageId,
-                  chunk,
-                  isComplete: false
-                });
+              for await (const event of result as any) {
+                // Handle different event types
+                if (event.type === 'raw_model_stream_event') {
+                  const delta = event.data?.delta;
 
-                await new Promise(resolve => setTimeout(resolve, 50));
+                  // Handle text content streaming
+                  if (delta?.content) {
+                    for (const contentPart of delta.content) {
+                      if (contentPart.type === 'output_text' && contentPart.text) {
+                        const chunk = contentPart.text;
+                        accumulatedContent += chunk;
+
+                        // Emit each character/word immediately (Cursor experience)
+                        socket.emit('message:streaming', {
+                          messageId: responseMessageId,
+                          chunk: chunk,
+                          isComplete: false
+                        });
+                      }
+                    }
+                  }
+                } else if (event.type === 'run_item_stream_event') {
+                  // Handle run-specific events
+                  const item = event.data?.item;
+
+                  if (item?.type === 'tool_call') {
+                    socket.emit('tool:call:start', {
+                      messageId: responseMessageId,
+                      toolCall: {
+                        id: item.id,
+                        toolName: item.name,
+                        parameters: item.arguments,
+                        status: 'running',
+                        startTime: new Date()
+                      }
+                    });
+                  } else if (item?.type === 'tool_result') {
+                    socket.emit('tool:call:complete', {
+                      messageId: responseMessageId,
+                      toolCall: {
+                        id: item.call_id,
+                        result: item.output,
+                        status: 'completed',
+                        endTime: new Date()
+                      }
+                    });
+                  }
+                } else if (event.type === 'agent_updated_stream_event') {
+                  // Handle agent state updates
+                  const agentData = event.data;
+                  if (agentData?.status) {
+                    socket.emit('agent:thinking', {
+                      messageId: responseMessageId,
+                      step: `Agent durumu: ${agentData.status}`
+                    });
+                  }
+                }
               }
-            } else {
-              accumulatedContent = (result as any).content || result;
+
+              // Wait for stream completion
+              await (result as any).completed;
+
+              logger.info(`✅ Streaming completed: ${accumulatedContent.length} chars`);
+
+            } catch (streamError) {
+              logger.error('❌ Streaming error:', streamError);
+              // Send error to client
+              socket.emit('message:streaming', {
+                messageId: responseMessageId,
+                chunk: '',
+                isComplete: true,
+                error: streamError instanceof Error ? streamError.message : 'Streaming failed'
+              });
+              throw streamError;
             }
           }
 
@@ -883,6 +989,51 @@ export class WebSocketServer {
         } catch (error) {
           logger.error('MCP disconnect failed:', error);
           socket.emit('error', { message: 'Failed to disconnect MCP server' });
+        }
+      });
+
+      // Handle tool approval response
+      socket.on('tool:approval:response', async (data: {
+        sessionId: string;
+        approvalId: string;
+        approved: boolean;
+      }) => {
+        try {
+          const session = this.chatSessions.get(data.sessionId);
+          if (!session) {
+            socket.emit('error', { message: 'Session not found' });
+            return;
+          }
+
+          if (!session.pendingApprovals) {
+            session.pendingApprovals = new Map();
+          }
+
+          const approval = session.pendingApprovals.get(data.approvalId);
+          if (!approval) {
+            socket.emit('error', { message: 'Approval request not found' });
+            return;
+          }
+
+          // Mark as resolved
+          approval.resolved = true;
+          approval.approved = data.approved;
+
+          logger.info(`🔐 Tool approval ${data.approved ? 'granted' : 'denied'}: ${approval.toolName}`);
+
+          // Emit confirmation
+          socket.emit('tool:approval:confirmed', {
+            approvalId: data.approvalId,
+            approved: data.approved,
+            toolName: approval.toolName
+          });
+
+          // Note: Agent run continuation would happen here
+          // For now, we just track the approval decision
+
+        } catch (error) {
+          logger.error('Tool approval response failed:', error);
+          socket.emit('error', { message: 'Failed to process approval' });
         }
       });
 
