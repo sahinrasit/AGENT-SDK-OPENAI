@@ -1,8 +1,21 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import path from 'path';
 
 // Load environment variables from .env file
-dotenv.config();
+const envPath = path.resolve(process.cwd(), '.env');
+console.log('🔍 Loading .env from:', envPath);
+const result = dotenv.config({ path: envPath });
+
+if (result.error) {
+  console.error('❌ Failed to load .env file:', result.error);
+} else {
+  console.log('✅ .env file loaded successfully');
+  console.log('🔑 OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY);
+  if (process.env.OPENAI_API_KEY) {
+    console.log('🔑 OPENAI_API_KEY length:', process.env.OPENAI_API_KEY.length);
+  }
+}
 
 const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, 'OpenAI API key is required'),

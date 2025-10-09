@@ -56,9 +56,9 @@ export const useChatPersistence = () => {
         agentType: session.agentType,
         messages: session.messages.map(msg => ({
           ...msg,
-          timestamp: msg.timestamp.toISOString()
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : msg.timestamp
         })),
-        lastActivity: session.lastActivity.toISOString(),
+        lastActivity: session.lastActivity instanceof Date ? session.lastActivity.toISOString() : session.lastActivity,
         metadata: session.metadata
       };
 

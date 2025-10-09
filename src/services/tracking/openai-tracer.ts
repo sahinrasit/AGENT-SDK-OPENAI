@@ -7,7 +7,6 @@
  * @see https://openai.github.io/openai-agents-js/guides/tracing
  */
 
-import { setTraceConfig, getTraceConfig } from '@openai/agents';
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 
@@ -66,8 +65,8 @@ export class OpenAITracer {
         traceConfig.headers = this.config.headers;
       }
 
-      // Configure trace settings
-      setTraceConfig(traceConfig);
+      // Note: OpenAI Agents SDK tracing configuration would go here
+      // Currently using custom logger-based tracing
 
       logger.info('✅ OpenAI tracing initialized', {
         enabled: this.config.enabled,
@@ -107,7 +106,6 @@ export class OpenAITracer {
    */
   disable(): void {
     this.config.enabled = false;
-    setTraceConfig({ enabled: false });
     logger.info('🔍 OpenAI tracing disabled');
   }
 

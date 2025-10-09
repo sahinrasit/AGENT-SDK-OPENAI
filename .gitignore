@@ -44,8 +44,10 @@ web/.eslintcache
 
 # Cursor/agents
 .cursor/
+.claude/
 .mcp/
 **/.cursor/**
+**/.claude/**
 
 # Misc
 .tmp/

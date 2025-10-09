@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSocket } from './useSocket';
 import { Message, ChatSession, AgentType, AgentResponse, ToolCall } from '../types/agent';
 import { useChatPersistence } from './useChatPersistence';
+import { sessionsApi } from '../api/sessions';
 
 interface UseChatOptions {
   sessionId?: string;
@@ -29,6 +30,9 @@ export const useChat = (options: UseChatOptions) => {
   // Chat persistence hook
   const { saveSession, loadSession } = useChatPersistence();
 
+  // Track which session we've joined to prevent infinite loops
+  const joinedSessionRef = useRef<string | null>(null);
+
   const {
     isConnected,
     connectionError,
@@ -53,29 +57,70 @@ export const useChat = (options: UseChatOptions) => {
     }
   });
 
-  // Initialize or join session
+  // Join session after it's loaded from database
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected || !session || !initialSessionId) return;
 
-    if (initialSessionId) {
-      // Join existing session
-      emit('session:join', { sessionId: initialSessionId });
-    } else {
-      // Create new session
-      emit('session:create', { agentType });
+    // Only join if session matches the initialSessionId AND we haven't already joined it
+    if (session.id === initialSessionId && joinedSessionRef.current !== initialSessionId) {
+      console.log('🔗 Joining session:', initialSessionId);
+      joinedSessionRef.current = initialSessionId;
+      emit('session:join', { sessionId: initialSessionId, agentType: session.agentType });
     }
-  }, [isConnected, initialSessionId, agentType]);
+  }, [isConnected, session, initialSessionId, emit]);
 
-  // Load session from localStorage on mount
+  // Reset joined session ref when sessionId changes
   useEffect(() => {
-    if (initialSessionId) {
-      const loaded = loadSession(initialSessionId);
-      if (loaded) {
-        setSession(loaded);
-        setMessages(loaded.messages);
+    joinedSessionRef.current = null;
+  }, [initialSessionId]);
+
+  // Load session and messages from database when sessionId changes
+  useEffect(() => {
+    if (!initialSessionId) {
+      setSession(null);
+      setMessages([]);
+      return;
+    }
+
+    const loadSessionData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Load session metadata from database
+        const sessionResponse = await sessionsApi.get(initialSessionId);
+        const sessionData = sessionResponse.data;
+
+        // Load messages from database
+        const messagesResponse = await sessionsApi.getMessages(initialSessionId);
+        const loadedMessages = messagesResponse.data;
+
+        // Create session object
+        const loadedSession: ChatSession = {
+          id: sessionData.id,
+          userId: sessionData.user_id,
+          agentType: sessionData.agent_type as AgentType,
+          title: sessionData.title,
+          status: sessionData.status,
+          createdAt: new Date(sessionData.created_at),
+          updatedAt: new Date(sessionData.updated_at),
+          lastActivity: new Date(sessionData.last_activity),
+          metadata: sessionData.metadata || {},
+          messages: loadedMessages
+        };
+
+        setSession(loadedSession);
+        setMessages(loadedMessages);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Failed to load session:', err);
+        setError('Oturum yüklenemedi');
+        setIsLoading(false);
       }
-    }
-  }, [initialSessionId, loadSession]);
+    };
+
+    loadSessionData();
+  }, [initialSessionId]);
 
   // Save session to localStorage whenever it changes
   useEffect(() => {

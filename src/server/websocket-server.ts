@@ -167,7 +167,7 @@ export class WebSocketServer {
       try {
         const allTools: any[] = [];
 
-        logger.info(`📊 MCP Status: ${this.mcpServers.length} HTTP servers, ${this.mcpTools.length} hosted tools`);
+        logger.debug(`📊 MCP Status: ${this.mcpServers.length} HTTP servers, ${this.mcpTools.length} hosted tools`);
 
         // Get tools from HTTP MCP servers using getAllMcpTools
         if (this.mcpServers.length > 0) {
@@ -354,9 +354,9 @@ export class WebSocketServer {
         agentType: string;
         userId?: string;
         contextAware?: boolean;
+        title?: string;
       }) => {
         try {
-          const sessionId = uuidv4();
           const userId = data.userId || `user-${clientId}`;
           const contextAware = data.contextAware ?? true;
 
@@ -370,29 +370,42 @@ export class WebSocketServer {
             );
           }
 
+          // Persist session to database first
+          const { sessionRepository } = await import('../db/repositories/session-repository.js');
+          const dbSession = await sessionRepository.create({
+            user_id: userId,
+            title: data.title || `New ${data.agentType} Chat`,
+            agent_type: data.agentType,
+            context: {},
+            settings: { contextAware }
+          });
+
+          // Create in-memory session
           const session: ChatSession = {
-            id: sessionId,
+            id: dbSession.id,
             agentType: data.agentType,
             userId,
             conversationId,
             messages: [],
             isActive: true,
-            startTime: new Date(),
-            lastActivity: new Date(),
-            contextAware
+            startTime: new Date(dbSession.created_at),
+            lastActivity: new Date(dbSession.created_at),
+            contextAware,
+            pendingApprovals: new Map()
           };
 
-          this.chatSessions.set(sessionId, session);
+          // Add to in-memory cache
+          this.chatSessions.set(dbSession.id, session);
 
           // Update client info
           const client = this.connectedClients.get(clientId);
           if (client) {
-            client.sessionId = sessionId;
+            client.sessionId = dbSession.id;
             client.agentType = data.agentType;
           }
 
           socket.emit('session:created', session);
-          logger.info(`📝 Session created: ${sessionId} for agent: ${data.agentType} (context-aware: ${contextAware})`);
+          logger.info(`📝 Session created and persisted: ${dbSession.id} for agent: ${data.agentType} (context-aware: ${contextAware})`);
 
         } catch (error) {
           logger.error('Failed to create session:', error);
@@ -401,20 +414,70 @@ export class WebSocketServer {
       });
 
       // Handle session joining
-      socket.on('session:join', (data: { sessionId: string }) => {
-        const session = this.chatSessions.get(data.sessionId);
-        if (session) {
-          // Update client info
-          const client = this.connectedClients.get(clientId);
-          if (client) {
-            client.sessionId = data.sessionId;
-            client.agentType = session.agentType;
+      socket.on('session:join', async (data: { sessionId: string; agentType?: string }) => {
+        try {
+          logger.info(`🔗 Client attempting to join session: ${data.sessionId}`);
+
+          // First check in-memory sessions
+          let session = this.chatSessions.get(data.sessionId);
+
+          // If not in memory, try to load from database
+          if (!session) {
+            logger.info(`📂 Session not in memory, loading from database: ${data.sessionId}`);
+            const { sessionRepository } = await import('../db/repositories/session-repository.js');
+            const { messageRepository } = await import('../db/repositories/message-repository.js');
+
+            const dbSession = await sessionRepository.findById(data.sessionId);
+
+            if (dbSession) {
+              // Load messages from database
+              const dbMessages = await messageRepository.findBySessionId(data.sessionId);
+
+              // Convert database session to in-memory session format
+              session = {
+                id: dbSession.id,
+                agentType: dbSession.agent_type,
+                userId: dbSession.user_id,
+                conversationId: data.sessionId,
+                messages: dbMessages.map((msg: any) => ({
+                  id: msg.id,
+                  role: msg.role,
+                  content: msg.content,
+                  timestamp: msg.created_at,
+                  agentType: msg.agent_type,
+                  toolCalls: msg.tool_calls,
+                  toolResults: msg.tool_results,
+                })),
+                isActive: dbSession.status === 'active',
+                startTime: new Date(dbSession.created_at),
+                lastActivity: new Date(dbSession.last_message_at || dbSession.updated_at),
+                contextAware: dbSession.settings?.contextAware ?? true, // Default to true
+                pendingApprovals: new Map(),
+              };
+
+              // Add to in-memory cache
+              this.chatSessions.set(data.sessionId, session);
+              logger.info(`✅ Loaded session from database and cached: ${data.sessionId}`);
+            }
           }
 
-          socket.emit('session:created', session);
-          logger.info(`🔗 Client joined session: ${data.sessionId}`);
-        } else {
-          socket.emit('error', { message: 'Session not found' });
+          if (session) {
+            // Update client info
+            const client = this.connectedClients.get(clientId);
+            if (client) {
+              client.sessionId = data.sessionId;
+              client.agentType = session.agentType;
+            }
+
+            socket.emit('session:created', session);
+            logger.info(`🔗 Client joined session: ${data.sessionId} (agent: ${session.agentType})`);
+          } else {
+            logger.warn(`❌ Session not found in database or memory: ${data.sessionId}`);
+            socket.emit('error', { message: 'Session not found' });
+          }
+        } catch (error) {
+          logger.error('Failed to join session:', error);
+          socket.emit('error', { message: 'Failed to join session' });
         }
       });
 
@@ -443,6 +506,21 @@ export class WebSocketServer {
           // Add to session
           session.messages.push(userMessage);
           session.lastActivity = new Date();
+
+          // Persist user message to database
+          try {
+            const { messageRepository } = await import('../db/repositories/message-repository.js');
+            await messageRepository.create({
+              session_id: data.sessionId,
+              role: 'user',
+              content: data.message,
+              content_type: 'text',
+              metadata: {}
+            });
+            logger.debug(`💾 User message persisted to database`);
+          } catch (dbError) {
+            logger.error('Failed to persist user message:', dbError);
+          }
 
           logger.agent(data.agentType, `Processing message: "${data.message}"`);
 
@@ -486,12 +564,13 @@ export class WebSocketServer {
               includeMemory: true
             });
 
-            // Extract content
-            accumulatedContent = typeof agentResponse === 'string'
-              ? agentResponse
-              : (typeof agentResponse.content === 'string'
-                  ? agentResponse.content
-                  : String(agentResponse.content || agentResponse));
+            // Debug: Log the full response
+            console.log('🔍 Agent Response Type:', typeof agentResponse);
+            console.log('🔍 Agent Response Keys:', agentResponse ? Object.keys(agentResponse) : 'null');
+            console.log('🔍 Agent Response Content length:', agentResponse?.content?.length || 0);
+
+            // ContextAgent.processInput() returns AgentResponse with pre-extracted content
+            accumulatedContent = agentResponse.content || '';
 
             // Emit tool calls if any
             if (agentResponse.toolCalls && agentResponse.toolCalls.length > 0) {
@@ -569,14 +648,39 @@ export class WebSocketServer {
                 if (event.type === 'raw_model_stream_event') {
                   const delta = event.data?.delta;
 
-                  // Handle text content streaming
-                  if (delta?.content) {
+                  // Delta can be either an array or an object with content
+                  if (delta && Array.isArray(delta)) {
+                    // Delta is an array - check each item for text content
+                    for (const item of delta) {
+                      if (item && typeof item === 'object') {
+                        if (item.type === 'output_text' && item.text) {
+                          const chunk = item.text;
+                          accumulatedContent += chunk;
+
+                          socket.emit('message:streaming', {
+                            messageId: responseMessageId,
+                            chunk: chunk,
+                            isComplete: false
+                          });
+                        } else if (item.type === 'text' && item.text) {
+                          const chunk = item.text;
+                          accumulatedContent += chunk;
+
+                          socket.emit('message:streaming', {
+                            messageId: responseMessageId,
+                            chunk: chunk,
+                            isComplete: false
+                          });
+                        }
+                      }
+                    }
+                  } else if (delta?.content) {
+                    // Delta is object with content property
                     for (const contentPart of delta.content) {
                       if (contentPart.type === 'output_text' && contentPart.text) {
                         const chunk = contentPart.text;
                         accumulatedContent += chunk;
 
-                        // Emit each character/word immediately (Cursor experience)
                         socket.emit('message:streaming', {
                           messageId: responseMessageId,
                           chunk: chunk,
@@ -757,6 +861,23 @@ export class WebSocketServer {
 
           // Add to session
           session.messages.push(agentMessage);
+
+          // Persist agent message to database
+          try {
+            const { messageRepository } = await import('../db/repositories/message-repository.js');
+            await messageRepository.create({
+              session_id: data.sessionId,
+              role: 'assistant',
+              content: textContent,
+              content_type: 'text',
+              agent_type: data.agentType,
+              tool_calls: agentResponse?.toolCalls || null,
+              metadata: agentResponse?.metadata || {}
+            });
+            logger.debug(`💾 Agent message persisted to database`);
+          } catch (dbError) {
+            logger.error('Failed to persist agent message:', dbError);
+          }
 
           // Emit completion
           if (data.stream) {

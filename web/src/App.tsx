@@ -4,6 +4,7 @@ import { MCPDashboard } from './components/Dashboard/MCPDashboard';
 import { useChat } from './hooks/useChat';
 import { AgentType, MCPServer } from './types/agent';
 import { useMcp } from './hooks/useMcp';
+import SessionList from './components/SessionList';
 import {
   MessageSquare,
   Database,
@@ -24,6 +25,7 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('chat');
   const [selectedAgentType, setSelectedAgentType] = useState<AgentType>('triage');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<string>();
   const { servers: mcpServers, addServer, disconnectServer } = useMcp();
   // Simple SPA routing without external deps
   const mapViewToPath = (view: ViewType): string => {
@@ -70,7 +72,8 @@ function App() {
 
   const chat = useChat({
     agentType: selectedAgentType,
-    autoConnect: true
+    sessionId: activeSessionId,
+    autoConnect: !!activeSessionId
   });
 
   const navigation = [
@@ -109,24 +112,57 @@ function App() {
   const renderMainContent = () => {
     switch (currentView) {
       case 'chat':
-        return chat.session ? (
-          <ChatInterface
-            session={chat.session}
-            onSendMessage={chat.sendMessage}
-            onStopGeneration={chat.stopGeneration}
-            isConnected={chat.isConnected}
-            isLoading={chat.isLoading}
-            streamingMessageId={chat.streamingMessageId}
-            pendingApprovals={chat.pendingApprovals}
-            onApproveToolCall={chat.approveToolCall}
-            onRejectToolCall={chat.rejectToolCall}
-          />
-        ) : (
+        // Show chat interface if session is active
+        if (chat.session) {
+          return (
+            <ChatInterface
+              session={chat.session}
+              onSendMessage={chat.sendMessage}
+              onStopGeneration={chat.stopGeneration}
+              isConnected={chat.isConnected}
+              isLoading={chat.isLoading}
+              streamingMessageId={chat.streamingMessageId}
+              pendingApprovals={chat.pendingApprovals}
+              onApproveToolCall={chat.approveToolCall}
+              onRejectToolCall={chat.rejectToolCall}
+            />
+          );
+        }
+
+        // Show welcome screen if no session selected
+        if (!activeSessionId) {
+          return (
+            <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 to-indigo-50">
+              <div className="text-center max-w-2xl px-8">
+                <Bot className="w-20 h-20 text-blue-500 mx-auto mb-6" />
+                <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                  IBTech AI Agent Platform'a Hoş Geldiniz
+                </h2>
+                <p className="text-lg text-gray-600 mb-8">
+                  Başlamak için sol taraftan bir sohbet seçin veya yeni bir sohbet başlatın
+                </p>
+                <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
+                  <span className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    OpenAI Agents SDK
+                  </span>
+                  <span>•</span>
+                  <span>Multi-Agent Orchestration</span>
+                  <span>•</span>
+                  <span>Context-Aware</span>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Show loading if session is being loaded
+        return (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <Bot className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <Bot className="w-16 h-16 text-gray-300 mx-auto mb-4 animate-pulse" />
               <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                Sohbet Oturumu Başlatılıyor
+                Sohbet Yükleniyor
               </h3>
               <p className="text-gray-600">
                 {chat.isConnected ? 'Konuşmanız hazırlanıyor...' : 'Sunucuya bağlanılıyor...'}
@@ -208,95 +244,109 @@ function App() {
     }
   };
 
+  const handleSessionSelect = (sessionId: string) => {
+    setActiveSessionId(sessionId);
+  };
+
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
-      {/* Sidebar */}
-      <div className={clsx(
-        'bg-white border-r border-gray-200 transition-all duration-300 ease-in-out',
-        'lg:relative lg:translate-x-0',
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-        'fixed inset-y-0 left-0 z-50 w-64 lg:w-64'
-      )}>
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <img
-                src="/aicoe.jpeg"
-                alt="AiCoE"
-                className="w-10 h-10 rounded-lg object-contain bg-white"
-              />
-              <div>
-                <h1 className="font-bold text-gray-900">AiCoE</h1>
-                <p className="text-xs text-gray-600">AI Center of Excellence</p>
+      {/* Session List Sidebar - Only show in chat view */}
+      {currentView === 'chat' && (
+        <SessionList
+          onSessionSelect={handleSessionSelect}
+          activeSessionId={activeSessionId}
+        />
+      )}
+
+      {/* Navigation Sidebar - Show in other views */}
+      {currentView !== 'chat' && (
+        <div className={clsx(
+          'bg-white border-r border-gray-200 transition-all duration-300 ease-in-out',
+          'lg:relative lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          'fixed inset-y-0 left-0 z-50 w-64 lg:w-64'
+        )}>
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/aicoe.jpeg"
+                  alt="AiCoE"
+                  className="w-10 h-10 rounded-lg object-contain bg-white"
+                />
+                <div>
+                  <h1 className="font-bold text-gray-900">AiCoE</h1>
+                  <p className="text-xs text-gray-600">AI Center of Excellence</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="lg:hidden p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Connection Status */}
+            <div className="px-6 py-3 border-b border-gray-200">
+              <div className="flex items-center gap-2 text-sm">
+                <div className={clsx(
+                  'w-2 h-2 rounded-full',
+                  chat.isConnected ? 'bg-green-400' : 'bg-red-400'
+                )}></div>
+                <span className={clsx(
+                  chat.isConnected ? 'text-green-600' : 'text-red-600'
+                )}>
+                  {chat.isConnected ? 'Bağlı' : 'Bağlantı Kesildi'}
+                </span>
               </div>
             </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
 
-          {/* Connection Status */}
-          <div className="px-6 py-3 border-b border-gray-200">
-            <div className="flex items-center gap-2 text-sm">
-              <div className={clsx(
-                'w-2 h-2 rounded-full',
-                chat.isConnected ? 'bg-green-400' : 'bg-red-400'
-              )}></div>
-              <span className={clsx(
-                chat.isConnected ? 'text-green-600' : 'text-red-600'
-              )}>
-                {chat.isConnected ? 'Bağlı' : 'Bağlantı Kesildi'}
-              </span>
-            </div>
-          </div>
+            {/* Navigation */}
+            <nav className="flex-1 px-4 py-4">
+              <ul className="space-y-1">
+                {navigation.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.id}>
+                      <button
+                        onClick={() => {
+                          navigateTo(item.view);
+                          setSidebarOpen(false);
+                        }}
+                        className={clsx(
+                          'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors duration-200',
+                          currentView === item.view
+                            ? 'bg-primary-100 text-primary-700 font-medium'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        )}
+                      >
+                        <Icon className="w-5 h-5" />
+                        {item.name}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-4">
-            <ul className="space-y-1">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => {
-                        navigateTo(item.view);
-                        setSidebarOpen(false);
-                      }}
-                      className={clsx(
-                        'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors duration-200',
-                        currentView === item.view
-                          ? 'bg-primary-100 text-primary-700 font-medium'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                      )}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {item.name}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex flex-col items-center gap-2">
-              <img
-                src="/ibtech.jpeg"
-                alt="IBTech"
-                className="h-6 object-contain"
-              />
-              <div className="text-xs text-gray-500 text-center">
-                OpenAI Agents SDK v0.1.9
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-200">
+              <div className="flex flex-col items-center gap-2">
+                <img
+                  src="/ibtech.jpeg"
+                  alt="IBTech"
+                  className="h-6 object-contain"
+                />
+                <div className="text-xs text-gray-500 text-center">
+                  OpenAI Agents SDK v0.1.9
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
