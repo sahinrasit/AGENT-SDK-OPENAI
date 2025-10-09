@@ -3,8 +3,7 @@ import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ToolApprovalCard } from './ToolApprovalCard';
 import { Message, AgentType, ChatSession } from '../../types/agent';
-import { Bot, Users, Settings, Activity } from 'lucide-react';
-import { clsx } from 'clsx';
+import { Bot } from 'lucide-react';
 
 interface PendingApproval {
   id: string;
@@ -25,47 +24,6 @@ interface ChatInterfaceProps {
   onRejectToolCall?: (approvalId: string) => void;
 }
 
-const getAgentInfo = (agentType: AgentType) => {
-  switch (agentType) {
-    case 'planner':
-      return {
-        name: 'AiCoE Planlayıcı',
-        description: 'Yapay zeka destekli araştırma ve planlama uzmanı',
-        color: 'purple'
-      };
-    case 'search':
-      return {
-        name: 'AiCoE Arama',
-        description: 'Akıllı bilgi toplama uzmanı',
-        color: 'cyan'
-      };
-    case 'writer':
-      return {
-        name: 'AiCoE Yazar',
-        description: 'Gelişmiş içerik oluşturma uzmanı',
-        color: 'green'
-      };
-    case 'triage':
-      return {
-        name: 'AiCoE Asistan',
-        description: 'IBTech yapay zeka destekli akıllı asistan',
-        color: 'blue'
-      };
-    case 'customer-service':
-      return {
-        name: 'AiCoE Destek',
-        description: 'Yapay zeka destekli müşteri hizmetleri uzmanı',
-        color: 'indigo'
-      };
-    default:
-      return {
-        name: 'AiCoE Ajan',
-        description: 'AI Center of Excellence - IBTech',
-        color: 'gray'
-      };
-  }
-};
-
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   session,
   onSendMessage,
@@ -80,8 +38,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [messages, setMessages] = useState<Message[]>(session.messages);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  const agentInfo = getAgentInfo(session.agentType);
 
   // Update messages when session changes
   useEffect(() => {
@@ -101,83 +57,63 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={clsx(
-              'w-10 h-10 rounded-full flex items-center justify-center',
-              `bg-${agentInfo.color}-100 text-${agentInfo.color}-600`
-            )}>
-              <Bot className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                {agentInfo.name}
-              </h2>
-              <p className="text-sm text-gray-600">
-                {agentInfo.description}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Connection status */}
-            <div className="flex items-center gap-2">
-              <div className={clsx(
-                'w-2 h-2 rounded-full',
-                isConnected ? 'bg-green-400' : 'bg-red-400'
-              )}></div>
-              <span className="text-sm text-gray-600">
-                {isConnected ? 'Bağlı' : 'Bağlantı Kesildi'}
-              </span>
-            </div>
-
-            {/* Action buttons */}
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-              <Users className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-              <Activity className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-              <Settings className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Messages */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin"
       >
         {isEmpty ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className={clsx(
-              'w-16 h-16 rounded-full flex items-center justify-center mb-4',
-              `bg-${agentInfo.color}-100 text-${agentInfo.color}-600`
-            )}>
-              <Bot className="w-8 h-8" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {agentInfo.name} ile sohbete başlayın
-            </h3>
-            <p className="text-gray-600 mb-6 max-w-md">
-              {agentInfo.description}. Size yardımcı olmak için buradayım.
-            </p>
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            {/* Gradient Background Decoration */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 opacity-50"></div>
 
-            {/* Suggested prompts */}
-            <div className="grid gap-3 max-w-lg w-full">
-              {getSuggestedPrompts(session.agentType).map((prompt, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSendMessage(prompt)}
-                  className="p-3 text-left bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors duration-200"
-                >
-                  <span className="text-sm text-gray-700">{prompt}</span>
-                </button>
-              ))}
+            <div className="relative z-10 max-w-3xl">
+              {/* Logo and Title */}
+              <div className="mb-8">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-4 mx-auto shadow-lg">
+                  <Bot className="w-10 h-10 text-white" />
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
+                  AiCoE Asistan
+                </h1>
+                <p className="text-lg text-gray-600 mb-2">
+                  IBTech yapay zeka destekli akıllı asistan
+                </p>
+                <p className="text-sm text-gray-500">
+                  Yapay zeka destekli akıllı asistanınız hazır!
+                </p>
+              </div>
+
+              {/* Suggested Prompts */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+                {getSuggestedPrompts(session.agentType).map((prompt, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSendMessage(prompt)}
+                    className="group p-4 text-left bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-md transition-all duration-200"
+                  >
+                    <span className="text-sm text-gray-700 group-hover:text-blue-600 transition-colors">
+                      {prompt}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Features */}
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="p-3 bg-white/50 rounded-lg">
+                  <div className="text-2xl mb-1">🚀</div>
+                  <div className="text-xs font-medium text-gray-700">Hızlı Yanıtlar</div>
+                </div>
+                <div className="p-3 bg-white/50 rounded-lg">
+                  <div className="text-2xl mb-1">🎯</div>
+                  <div className="text-xs font-medium text-gray-700">Akıllı Analiz</div>
+                </div>
+                <div className="p-3 bg-white/50 rounded-lg">
+                  <div className="text-2xl mb-1">🔒</div>
+                  <div className="text-xs font-medium text-gray-700">Güvenli</div>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -218,7 +154,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         onStopGeneration={onStopGeneration}
         isLoading={isLoading}
         disabled={!isConnected}
-        placeholder={`Message ${agentInfo.name}...`}
+        placeholder="AiCoE Asistan'a mesaj gönderin..."
       />
     </div>
   );

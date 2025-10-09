@@ -40,6 +40,11 @@ router.get('/sessions', async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const { status, agent_type, is_pinned, search, limit, offset, orderBy, order } = req.query;
 
+    // Clean up old empty sessions (older than 30 minutes with no messages)
+    await sessionRepository.deleteEmptySessions(userId, 30).catch(err => {
+      logger.warn('Failed to clean up empty sessions:', err);
+    });
+
     const sessions = await sessionRepository.findByUserId(userId, {
       status: status as any,
       agent_type: agent_type as string,

@@ -13,7 +13,10 @@ import {
   Settings,
   Menu,
   X,
-  Bot
+  Bot,
+  Boxes,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -24,7 +27,8 @@ type ViewType = 'chat' | 'mcp' | 'agents' | 'analytics' | 'settings';
 function App() {
   const [currentView, setCurrentView] = useState<ViewType>('chat');
   const [selectedAgentType, setSelectedAgentType] = useState<AgentType>('triage');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // Sidebar collapse state
+  const [sessionsExpanded, setSessionsExpanded] = useState(true); // Sessions section expand/collapse
   const [activeSessionId, setActiveSessionId] = useState<string>();
   const { servers: mcpServers, addServer, disconnectServer } = useMcp();
   // Simple SPA routing without external deps
@@ -189,52 +193,103 @@ function App() {
 
       case 'agents':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Ajan Yönetimi</h2>
-            <div className="grid gap-4 max-w-4xl">
-              {agentTypes.map((agent) => (
-                <div
-                  key={agent.type}
-                  className={clsx(
-                    'card cursor-pointer transition-all duration-200',
-                    selectedAgentType === agent.type
-                      ? 'ring-2 ring-primary-500 border-primary-200'
-                      : 'hover:shadow-md'
-                  )}
-                  onClick={() => setSelectedAgentType(agent.type)}
-                >
-                  <div className="flex items-center gap-4">
-                    <Bot className="w-8 h-8 text-gray-600" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{agent.name}</h3>
-                      <p className="text-gray-600 text-sm">{agent.description}</p>
-                    </div>
-                    {selectedAgentType === agent.type && (
-                      <div className="w-3 h-3 bg-primary-500 rounded-full"></div>
-                    )}
+          <div className="p-6 bg-gray-50 h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Yapay Zeka Ajanları</h2>
+                    <p className="text-sm text-gray-600">Farklı görevler için özelleştirilmiş ajanları seçin</p>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="grid gap-4">
+                {agentTypes.map((agent) => (
+                  <div
+                    key={agent.type}
+                    className={clsx(
+                      'bg-white rounded-xl border-2 cursor-pointer transition-all duration-200 overflow-hidden',
+                      selectedAgentType === agent.type
+                        ? 'border-blue-500 shadow-lg scale-[1.02]'
+                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                    )}
+                    onClick={() => setSelectedAgentType(agent.type)}
+                  >
+                    <div className="flex items-center gap-4 p-5">
+                      <div className={clsx(
+                        'w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0',
+                        selectedAgentType === agent.type
+                          ? 'bg-gradient-to-br from-blue-600 to-purple-600'
+                          : 'bg-gray-100'
+                      )}>
+                        <img
+                          src="/aicoe.jpeg"
+                          alt="AiCoE"
+                          className="w-7 h-7 object-contain"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 text-lg">{agent.name}</h3>
+                        <p className="text-gray-600 text-sm">{agent.description}</p>
+                      </div>
+                      {selectedAgentType === agent.type && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          Aktif
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );
 
       case 'analytics':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Analitik Panel</h2>
-            <div className="text-gray-600">
-              Analitik ve izleme özellikleri yakında gelecek...
+          <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 to-purple-50">
+            <div className="text-center max-w-md px-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg">
+                <Activity className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                Analitik Panel
+              </h2>
+              <p className="text-lg text-gray-600 mb-4">
+                Performans metrikleri ve kullanım istatistikleri özellikleri yakında gelecek
+              </p>
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                <p className="text-sm text-gray-500">
+                  Yakında: Kullanım raporları, performans grafikleri, sistem metrikleri ve daha fazlası
+                </p>
+              </div>
             </div>
           </div>
         );
 
       case 'settings':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Ayarlar</h2>
-            <div className="text-gray-600">
-              Yapılandırma ayarları yakında gelecek...
+          <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 to-purple-50">
+            <div className="text-center max-w-md px-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg">
+                <Settings className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                Ayarlar
+              </h2>
+              <p className="text-lg text-gray-600 mb-4">
+                Sistem yapılandırması ve kullanıcı tercihleri özellikleri yakında gelecek
+              </p>
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                <p className="text-sm text-gray-500">
+                  Yakında: API ayarları, bildirim tercihleri, güvenlik yapılandırması ve daha fazlası
+                </p>
+              </div>
             </div>
           </div>
         );
@@ -248,77 +303,221 @@ function App() {
     setActiveSessionId(sessionId);
   };
 
-  return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
-      {/* Session List Sidebar - Only show in chat view */}
-      {currentView === 'chat' && (
-        <SessionList
-          onSessionSelect={handleSessionSelect}
-          activeSessionId={activeSessionId}
-        />
-      )}
+  const getAgentInfo = (agentType: AgentType) => {
+    switch (agentType) {
+      case 'planner':
+        return {
+          name: 'AiCoE Planlayıcı',
+          description: 'Yapay zeka destekli araştırma ve planlama uzmanı',
+        };
+      case 'search':
+        return {
+          name: 'AiCoE Arama',
+          description: 'Akıllı bilgi toplama uzmanı',
+        };
+      case 'writer':
+        return {
+          name: 'AiCoE Yazar',
+          description: 'Gelişmiş içerik oluşturma uzmanı',
+        };
+      case 'triage':
+        return {
+          name: 'AiCoE Asistan',
+          description: 'IBTech yapay zeka destekli akıllı asistan',
+        };
+      case 'customer-service':
+        return {
+          name: 'AiCoE Destek',
+          description: 'Yapay zeka destekli müşteri hizmetleri uzmanı',
+        };
+      default:
+        return {
+          name: 'AiCoE Ajan',
+          description: 'AI Center of Excellence - IBTech',
+        };
+    }
+  };
 
-      {/* Navigation Sidebar - Show in other views */}
-      {currentView !== 'chat' && (
-        <div className={clsx(
-          'bg-white border-r border-gray-200 transition-all duration-300 ease-in-out',
-          'lg:relative lg:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-          'fixed inset-y-0 left-0 z-50 w-64 lg:w-64'
-        )}>
-          <div className="flex flex-col h-full">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
+  const agentInfo = getAgentInfo(selectedAgentType);
+
+  return (
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+      {/* Fixed Header - Above everything */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 border-b border-blue-700 px-6 py-4 shadow-lg z-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            {/* Logos */}
+            <div className="flex items-center gap-3 pr-6 border-r border-white/20">
+              <div className="bg-white rounded-lg p-2 shadow-md">
                 <img
                   src="/aicoe.jpeg"
                   alt="AiCoE"
-                  className="w-10 h-10 rounded-lg object-contain bg-white"
+                  className="w-6 h-6 object-contain"
                 />
-                <div>
-                  <h1 className="font-bold text-gray-900">AiCoE</h1>
-                  <p className="text-xs text-gray-600">AI Center of Excellence</p>
-                </div>
               </div>
+              <div className="text-white">
+                <div className="text-sm font-bold">AiCoE</div>
+                <div className="text-xs opacity-90">IBTech</div>
+              </div>
+            </div>
+
+            {/* Page Title */}
+            <div>
+              {currentView === 'chat' ? (
+                <>
+                  <h2 className="text-lg font-semibold text-white">
+                    {agentInfo.name}
+                  </h2>
+                  <p className="text-sm text-white/80">
+                    {agentInfo.description}
+                  </p>
+                </>
+              ) : currentView === 'mcp' ? (
+                <>
+                  <h2 className="text-lg font-semibold text-white">
+                    MCP Sunucu Yönetimi
+                  </h2>
+                  <p className="text-sm text-white/80">
+                    Model Context Protocol sunucularını ve araçlarını yönetin
+                  </p>
+                </>
+              ) : currentView === 'agents' ? (
+                <>
+                  <h2 className="text-lg font-semibold text-white">
+                    Ajan Yönetimi
+                  </h2>
+                  <p className="text-sm text-white/80">
+                    Yapay zeka ajanlarınızı yönetin ve yapılandırın
+                  </p>
+                </>
+              ) : currentView === 'analytics' ? (
+                <>
+                  <h2 className="text-lg font-semibold text-white">
+                    Analitik Panel
+                  </h2>
+                  <p className="text-sm text-white/80">
+                    Performans metrikleri ve kullanım istatistikleri
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-lg font-semibold text-white">
+                    Ayarlar
+                  </h2>
+                  <p className="text-sm text-white/80">
+                    Sistem yapılandırması ve tercihler
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Connection status */}
+            <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full">
+              <div className={clsx(
+                'w-2 h-2 rounded-full',
+                chat.isConnected ? 'bg-green-400' : 'bg-red-400'
+              )}></div>
+              <span className="text-sm text-white">
+                {chat.isConnected ? 'Bağlı' : 'Bağlantı Kesildi'}
+              </span>
+            </div>
+
+            {/* MCP Server Button - Only show when not on MCP page */}
+            {currentView !== 'mcp' && (
               <button
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-1 text-gray-400 hover:text-gray-600"
+                onClick={() => navigateTo('mcp')}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors duration-200 border border-white/20"
               >
-                <X className="w-5 h-5" />
+                <Boxes className="w-4 h-4" />
+                <span className="text-sm font-medium">MCP Sunucular</span>
+              </button>
+            )}
+
+            {/* Action buttons */}
+            <button
+              onClick={() => navigateTo('analytics')}
+              className={clsx(
+                'p-2 rounded-lg transition-colors',
+                currentView === 'analytics'
+                  ? 'bg-white/20 text-white'
+                  : 'text-white/80 hover:text-white hover:bg-white/10'
+              )}
+              title="Analitik"
+            >
+              <Activity className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => navigateTo('settings')}
+              className={clsx(
+                'p-2 rounded-lg transition-colors',
+                currentView === 'settings'
+                  ? 'bg-white/20 text-white'
+                  : 'text-white/80 hover:text-white hover:bg-white/10'
+              )}
+              title="Ayarlar"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main content area with unified sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Unified Sidebar - Always visible unless collapsed */}
+        {!sidebarCollapsed && (
+          <div className="bg-white border-r border-gray-200 w-64 flex-shrink-0 flex flex-col">
+            {/* Collapse Button */}
+            <div className="border-b border-gray-200 p-2">
+              <button
+                onClick={() => setSidebarCollapsed(true)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="text-sm">Daralt</span>
               </button>
             </div>
 
-            {/* Connection Status */}
-            <div className="px-6 py-3 border-b border-gray-200">
-              <div className="flex items-center gap-2 text-sm">
-                <div className={clsx(
-                  'w-2 h-2 rounded-full',
-                  chat.isConnected ? 'bg-green-400' : 'bg-red-400'
-                )}></div>
-                <span className={clsx(
-                  chat.isConnected ? 'text-green-600' : 'text-red-600'
-                )}>
-                  {chat.isConnected ? 'Bağlı' : 'Bağlantı Kesildi'}
-                </span>
-              </div>
+            {/* Sessions Section - Collapsible */}
+            <div className="border-b border-gray-200">
+              <button
+                onClick={() => setSessionsExpanded(!sessionsExpanded)}
+                className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <span className="text-sm font-semibold">Sohbetler</span>
+                {sessionsExpanded ? (
+                  <ChevronLeft className="w-4 h-4 rotate-90" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+              </button>
+
+              {sessionsExpanded && (
+                <div className="max-h-96 overflow-y-auto">
+                  <SessionList
+                    onSessionSelect={handleSessionSelect}
+                    activeSessionId={activeSessionId}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 px-4 py-4">
+            {/* Navigation Menu */}
+            <nav className="flex-1 px-4 py-4 overflow-y-auto">
+              <div className="text-xs font-semibold text-gray-500 px-2 mb-2">MENÜ</div>
               <ul className="space-y-1">
                 {navigation.map((item) => {
                   const Icon = item.icon;
                   return (
                     <li key={item.id}>
                       <button
-                        onClick={() => {
-                          navigateTo(item.view);
-                          setSidebarOpen(false);
-                        }}
+                        onClick={() => navigateTo(item.view)}
                         className={clsx(
                           'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors duration-200',
                           currentView === item.view
-                            ? 'bg-primary-100 text-primary-700 font-medium'
+                            ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 font-medium'
                             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                         )}
                       >
@@ -345,41 +544,26 @@ function App() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header */}
-        <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center justify-between">
+        {/* Collapsed Sidebar - Show expand button */}
+        {sidebarCollapsed && (
+          <div className="bg-white border-r border-gray-200 w-12 flex-shrink-0 flex flex-col items-center py-2">
             <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 text-gray-400 hover:text-gray-600"
+              onClick={() => setSidebarCollapsed(false)}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Genişlet"
             >
-              <Menu className="w-5 h-5" />
+              <ChevronRight className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <img src="/aicoe.jpeg" alt="AiCoE" className="w-6 h-6 rounded object-contain" />
-              <span className="font-semibold text-gray-900">AiCoE</span>
-            </div>
-            <div></div>
           </div>
-        </div>
+        )}
 
         {/* Main content area */}
         <main className="flex-1 overflow-hidden">
           {renderMainContent()}
         </main>
       </div>
-
-      {/* Sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
     </div>
   );
 }

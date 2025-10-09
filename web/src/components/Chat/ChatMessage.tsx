@@ -11,18 +11,13 @@ interface ChatMessageProps {
 }
 
 const getAgentIcon = (agentType?: AgentType) => {
-  switch (agentType) {
-    case 'planner':
-      return <Bot className="w-4 h-4 text-purple-600" />;
-    case 'search':
-      return <Bot className="w-4 h-4 text-cyan-600" />;
-    case 'writer':
-      return <Bot className="w-4 h-4 text-green-600" />;
-    case 'triage':
-      return <Bot className="w-4 h-4 text-blue-600" />;
-    default:
-      return <Bot className="w-4 h-4 text-gray-600" />;
-  }
+  return (
+    <img
+      src="/aicoe.jpeg"
+      alt="AiCoE"
+      className="w-5 h-5 object-contain"
+    />
+  );
 };
 
 const getAgentStyles = (agentType?: AgentType) => {
@@ -103,18 +98,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
 
   return (
     <div className={clsx(
-      'flex gap-4 mb-6 max-w-4xl',
+      'flex gap-3 mb-4 max-w-4xl',
       isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'
     )}>
       {/* Avatar */}
       <div className={clsx(
-        'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
+        'flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center shadow-sm',
         isUser
-          ? 'bg-primary-600 text-white'
-          : 'bg-gray-100 text-gray-600'
+          ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white'
+          : 'bg-white border-2 border-gray-200 text-gray-700'
       )}>
         {isUser ? (
-          <User className="w-4 h-4" />
+          <User className="w-5 h-5" />
         ) : (
           getAgentIcon(message.agentType)
         )}
@@ -122,34 +117,27 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
 
       {/* Message content */}
       <div className={clsx(
-        'flex-1 max-w-[70%]',
+        'flex-1 max-w-[75%]',
         isUser ? 'text-right' : 'text-left'
       )}>
         {/* Agent name and timestamp */}
         {!isUser && (
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="font-medium text-sm text-gray-700">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="font-semibold text-sm text-gray-800">
               {message.agentName || 'Assistant'}
             </span>
             {message.agentType && (
-              <span className={clsx(
-                'badge text-xs',
-                message.agentType === 'planner' && 'badge-info',
-                message.agentType === 'search' && 'badge-info',
-                message.agentType === 'writer' && 'badge-success',
-                message.agentType === 'triage' && 'badge-warning'
-              )}>
-                {message.agentType}
+              <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-md">
+                {message.agentType === 'triage' ? 'AiCoE' : message.agentType}
               </span>
             )}
             {hasTools && (
-              <span className="badge text-xs badge-success flex items-center gap-1">
+              <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-md flex items-center gap-1">
                 <Wrench className="w-3 h-3" />
-                {toolCalls.length} tool{toolCalls.length > 1 ? 's' : ''}
+                {toolCalls.length} araç
               </span>
             )}
-            <Clock className="w-3 h-3 text-gray-400" />
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 ml-auto">
               {formatTime(message.timestamp)}
             </span>
           </div>
@@ -157,22 +145,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
 
         {/* Message bubble */}
         <div className={clsx(
-          'rounded-2xl px-4 py-3 shadow-sm',
+          'inline-block rounded-2xl px-4 py-3 shadow-md max-w-full',
           isUser
-            ? 'message-user'
-            : `message-agent ${getAgentStyles(message.agentType)}`,
-          isStreaming && 'animate-pulse-slow'
+            ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white'
+            : 'bg-white border border-gray-200 text-gray-800',
+          isStreaming && 'shadow-lg'
         )}>
           {isStreaming && !message.content ? (
             <TypingIndicator />
           ) : (
-            <div className={clsx(
-              'prose prose-sm max-w-none',
-              isUser ? 'prose-invert' : 'prose-gray'
-            )}>
-              <p className="mb-0 whitespace-pre-wrap">
-                {typeof message.content === 'string' 
-                  ? message.content 
+            <div className="prose prose-sm max-w-none">
+              <p className="mb-0 whitespace-pre-wrap leading-relaxed" style={{
+                color: isUser ? 'white' : '#1f2937'
+              }}>
+                {typeof message.content === 'string'
+                  ? message.content
                   : JSON.stringify(message.content, null, 2)}
               </p>
             </div>
@@ -180,9 +167,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
 
           {/* Streaming indicator */}
           {isStreaming && message.content && (
-            <div className="flex items-center mt-2 text-xs opacity-70">
-              <div className="w-2 h-2 bg-current rounded-full animate-pulse mr-2"></div>
-              Streaming...
+            <div className={clsx(
+              "flex items-center mt-2 text-xs",
+              isUser ? "text-white/70" : "text-gray-500"
+            )}>
+              <div className="w-1.5 h-1.5 bg-current rounded-full animate-pulse mr-2"></div>
+              Yazıyor...
             </div>
           )}
 
@@ -190,7 +180,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
           {!isStreaming && !isUser && message.content && (
             <div className="flex items-center mt-2 text-xs text-green-600">
               <CheckCircle className="w-3 h-3 mr-1" />
-              Complete
+              Tamamlandı
             </div>
           )}
         </div>

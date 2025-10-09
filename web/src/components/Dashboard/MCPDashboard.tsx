@@ -87,19 +87,14 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
-      {/* Header */}
+      {/* Action Bar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">MCP Sunucu Yönetimi</h1>
-            <p className="text-gray-600">Model Context Protocol sunucularını ve araçlarını yönetin</p>
-          </div>
-
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
               onClick={handleRefreshAll}
               disabled={isRefreshing}
-              className="btn btn-secondary flex items-center gap-2"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm disabled:opacity-50"
             >
               <RefreshCw className={clsx('w-4 h-4', isRefreshing && 'animate-spin')} />
               Tümünü Yenile
@@ -107,13 +102,13 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
 
             <button
               onClick={onExportConfig}
-              className="btn btn-secondary flex items-center gap-2"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
             >
               <Download className="w-4 h-4" />
               Dışa Aktar
             </button>
 
-            <label className="btn btn-secondary flex items-center gap-2 cursor-pointer">
+            <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
               <Upload className="w-4 h-4" />
               İçe Aktar
               <input
@@ -123,48 +118,48 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
                 className="hidden"
               />
             </label>
-
-            <button
-              onClick={() => setFormOpen(true)}
-              className="btn btn-primary flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Sunucu Ekle
-            </button>
           </div>
+
+          <button
+            onClick={() => setFormOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md"
+          >
+            <Plus className="w-4 h-4" />
+            Sunucu Ekle
+          </button>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4 text-center">
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 text-center border border-gray-200">
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
             <div className="text-sm text-gray-600">Toplam Sunucu</div>
           </div>
-          <div className="bg-green-50 rounded-lg p-4 text-center">
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 text-center border border-green-200">
             <div className="text-2xl font-bold text-green-600">{stats.connected}</div>
             <div className="text-sm text-gray-600">Bağlı</div>
           </div>
-          <div className="bg-gray-50 rounded-lg p-4 text-center">
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 text-center border border-gray-200">
             <div className="text-2xl font-bold text-gray-600">{stats.disconnected}</div>
             <div className="text-sm text-gray-600">Bağlı Değil</div>
           </div>
-          <div className="bg-red-50 rounded-lg p-4 text-center">
+          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 text-center border border-red-200">
             <div className="text-2xl font-bold text-red-600">{stats.error}</div>
             <div className="text-sm text-gray-600">Hata</div>
           </div>
-          <div className="bg-blue-50 rounded-lg p-4 text-center">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 text-center border border-blue-200">
             <div className="text-2xl font-bold text-blue-600">{stats.totalTools}</div>
             <div className="text-sm text-gray-600">Toplam Araç</div>
           </div>
-          <div className="bg-green-50 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{stats.activeTools}</div>
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 text-center border border-purple-200">
+            <div className="text-2xl font-bold text-purple-600">{stats.activeTools}</div>
             <div className="text-sm text-gray-600">Aktif Araç</div>
           </div>
         </div>
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-6 py-3">
         <div className="flex items-center gap-4">
           {/* Search */}
           <div className="flex-1 relative">
@@ -174,7 +169,7 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
               placeholder="Sunucu ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input pl-10"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             />
           </div>
 
@@ -184,7 +179,7 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as ServerFilter)}
-              className="input w-auto"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
             >
               <option value="all">Tüm Sunucular</option>
               <option value="connected">Bağlı</option>
@@ -211,9 +206,9 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
                 </p>
                 <button
                   onClick={() => setFormOpen(true)}
-                  className="btn btn-primary flex items-center gap-2"
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-5 h-5" />
                   İlk Sunucuyu Ekle
                 </button>
               </>
@@ -231,7 +226,7 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
                     setSearchTerm('');
                     setFilter('all');
                   }}
-                  className="btn btn-secondary"
+                  className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Filtreleri Temizle
                 </button>
@@ -279,20 +274,22 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
 
       {/* Health Status Banner */}
       {stats.error > 0 && (
-        <div className="bg-red-50 border-t border-red-200 px-6 py-3">
+        <div className="bg-gradient-to-r from-red-50 to-red-100 border-t border-red-200 px-6 py-3 shadow-sm">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <div className="bg-red-600 rounded-full p-2">
+              <AlertTriangle className="w-4 h-4 text-white" />
+            </div>
             <div className="flex-1">
-              <span className="text-red-800 font-medium">
+              <span className="text-red-900 font-semibold">
                 {stats.error} sunucu sorun yaşıyor
               </span>
-              <span className="text-red-700 ml-2">
+              <span className="text-red-700 ml-2 text-sm">
                 Sunucu yapılandırmalarını ve ağ bağlantısını kontrol edin.
               </span>
             </div>
             <button
               onClick={handleRefreshAll}
-              className="text-red-700 hover:text-red-800 underline text-sm"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
             >
               Tümünü Yenile
             </button>
@@ -301,10 +298,12 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
       )}
 
       {stats.connected === stats.total && stats.total > 0 && (
-        <div className="bg-green-50 border-t border-green-200 px-6 py-3">
+        <div className="bg-gradient-to-r from-green-50 to-green-100 border-t border-green-200 px-6 py-3 shadow-sm">
           <div className="flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <span className="text-green-800 font-medium">
+            <div className="bg-green-600 rounded-full p-2">
+              <CheckCircle className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-green-900 font-semibold">
               Tüm sunucular sorunsuz çalışıyor
             </span>
           </div>

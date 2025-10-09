@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useSessions } from '../hooks/useSessions';
 import { ChatSession } from '../api/sessions';
+import { clsx } from 'clsx';
 
 interface SessionListProps {
   onSessionSelect: (sessionId: string) => void;
@@ -19,6 +20,14 @@ export default function SessionList({ onSessionSelect, activeSessionId }: Sessio
 
   const handleNewChat = async () => {
     try {
+      // Check if current active session is empty (no messages)
+      const activeSession = sessions.find(s => s.id === activeSessionId);
+
+      if (activeSession && activeSession.message_count === 0) {
+        // Don't create new session, just keep the current empty one
+        return;
+      }
+
       const newSession = await createSession({ title: 'Yeni Sohbet' });
       onSessionSelect(newSession.id);
     } catch (err) {
@@ -63,27 +72,32 @@ export default function SessionList({ onSessionSelect, activeSessionId }: Sessio
     return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
   };
 
-  const pinnedSessions = sessions.filter((s) => s.is_pinned);
-  const regularSessions = sessions.filter((s) => !s.is_pinned);
+  // Filter out empty sessions (no messages) unless it's the active session
+  const nonEmptySessions = sessions.filter((s) =>
+    s.message_count > 0 || s.id === activeSessionId
+  );
+
+  const pinnedSessions = nonEmptySessions.filter((s) => s.is_pinned);
+  const regularSessions = nonEmptySessions.filter((s) => !s.is_pinned);
 
   if (loading && sessions.length === 0) {
     return (
-      <div className="flex flex-col h-full w-64 border-r border-gray-200 bg-gray-50">
-        <div className="p-4">Yükleniyor...</div>
+      <div className="p-4">
+        <div className="text-sm text-gray-500">Yükleniyor...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full w-64 border-r border-gray-200 bg-gray-50">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 space-y-3">
+    <div className="flex flex-col">
+      {/* Header - New Chat and Search */}
+      <div className="px-3 pb-3 space-y-2">
         <button
           onClick={handleNewChat}
-          className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+          className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-sm"
         >
-          <span>+</span>
-          <span>Yeni Sohbet</span>
+          <span className="text-lg">+</span>
+          <span className="text-sm font-medium">Yeni Sohbet</span>
         </button>
 
         {/* Search */}
@@ -92,8 +106,8 @@ export default function SessionList({ onSessionSelect, activeSessionId }: Sessio
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Ara..."
-            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Sohbet ara..."
+            className="w-full px-3 py-2 pr-8 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <button
             type="submit"
@@ -105,11 +119,11 @@ export default function SessionList({ onSessionSelect, activeSessionId }: Sessio
       </div>
 
       {/* Session List */}
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {/* Pinned Sessions */}
         {pinnedSessions.length > 0 && (
-          <div className="p-2">
-            <div className="text-xs font-semibold text-gray-500 px-2 py-1">SABİTLENEN</div>
+          <div className="px-3 pb-2">
+            <div className="text-xs font-semibold text-gray-500 px-2 pb-1">SABİTLENEN</div>
             {pinnedSessions.map((session) => (
               <SessionItem
                 key={session.id}
@@ -125,9 +139,9 @@ export default function SessionList({ onSessionSelect, activeSessionId }: Sessio
         )}
 
         {/* Regular Sessions */}
-        <div className="p-2">
+        <div className="px-3">
           {regularSessions.length === 0 && pinnedSessions.length === 0 && (
-            <div className="text-center text-gray-500 py-8">Henüz sohbet yok</div>
+            <div className="text-center text-gray-500 text-sm py-6">Henüz sohbet yok</div>
           )}
           {regularSessions.map((session) => (
             <SessionItem
@@ -167,21 +181,26 @@ function SessionItem({
 
   return (
     <div
-      className={`group relative p-3 mb-1 rounded-lg cursor-pointer transition-colors ${
-        isActive ? 'bg-blue-100 border-l-4 border-blue-500' : 'hover:bg-gray-100'
-      }`}
+      className={clsx(
+        'group relative p-2.5 mb-1 rounded-lg cursor-pointer transition-all',
+        isActive
+          ? 'bg-gradient-to-r from-blue-100 to-purple-100 border-l-4 border-blue-500 shadow-sm'
+          : 'hover:bg-gray-50'
+      )}
       onClick={onSelect}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
             {session.is_pinned && <span className="text-xs">📌</span>}
-            <h3 className="text-sm font-medium text-gray-900 truncate">{session.title}</h3>
+            <h3 className="text-sm font-medium text-gray-900 truncate line-clamp-1">
+              {session.title}
+            </h3>
           </div>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-xs text-gray-500">{formatDate(session.created_at)}</span>
             <span className="text-xs text-gray-400">•</span>
-            <span className="text-xs text-gray-500">{session.message_count} mesaj</span>
+            <span className="text-xs text-gray-500">{session.message_count}</span>
           </div>
         </div>
 
@@ -191,7 +210,7 @@ function SessionItem({
             e.stopPropagation();
             setShowMenu(!showMenu);
           }}
-          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity"
+          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity flex-shrink-0"
         >
           ⋮
         </button>
@@ -200,7 +219,7 @@ function SessionItem({
       {/* Context Menu */}
       {showMenu && (
         <div
-          className="absolute right-2 top-12 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1 min-w-[150px]"
+          className="absolute right-2 top-12 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1 min-w-[160px]"
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -209,9 +228,10 @@ function SessionItem({
               onPin();
               setShowMenu(false);
             }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
           >
-            {session.is_pinned ? '📌 Sabitlemeyi Kaldır' : '📌 Sabitle'}
+            <span>{session.is_pinned ? '📌' : '📌'}</span>
+            <span>{session.is_pinned ? 'Sabitlemeyi Kaldır' : 'Sabitle'}</span>
           </button>
           <button
             onClick={(e) => {
@@ -219,9 +239,10 @@ function SessionItem({
               onDelete();
               setShowMenu(false);
             }}
-            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"
+            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
           >
-            🗑️ Sil
+            <span>🗑️</span>
+            <span>Sil</span>
           </button>
         </div>
       )}

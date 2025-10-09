@@ -336,6 +336,35 @@ export class SessionRepository {
       throw error;
     }
   }
+
+  /**
+   * Delete empty sessions (sessions with no messages)
+   * @param userId - User ID to filter sessions
+   * @param olderThanMinutes - Only delete empty sessions older than this many minutes (default: 30)
+   */
+  async deleteEmptySessions(userId: string, olderThanMinutes: number = 30): Promise<number> {
+    const query = `
+      UPDATE chat_sessions
+      SET status = 'deleted', updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = $1
+        AND message_count = 0
+        AND status = 'active'
+        AND created_at < NOW() - INTERVAL '${olderThanMinutes} minutes'
+      RETURNING id
+    `;
+
+    try {
+      const result = await database.query(query, [userId]);
+      const count = result.rowCount || 0;
+      if (count > 0) {
+        logger.info(`Deleted ${count} empty sessions for user ${userId}`);
+      }
+      return count;
+    } catch (error) {
+      logger.error('Failed to delete empty sessions:', error);
+      throw error;
+    }
+  }
 }
 
 // Singleton instance
