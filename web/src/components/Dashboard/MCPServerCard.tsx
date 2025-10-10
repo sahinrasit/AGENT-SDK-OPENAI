@@ -123,153 +123,116 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
     server.tools.some(t => t.name === 'mcp_call_tool');
 
   return (
-    <div className="card hover:shadow-md transition-shadow duration-200">
-      {/* Server Header */}
+    <div className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow duration-200">
+      {/* Compact Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={clsx(
-            'p-2 rounded-lg',
-            getStatusColor(server.status)
-          )}>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className={clsx('p-1.5 rounded', getStatusColor(server.status))}>
             {getServerIcon(server.type)}
           </div>
 
-          <div>
-            <h3 className="font-semibold text-gray-900">{server.name}</h3>
-            <div className="flex items-center gap-2 mt-1">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-sm text-gray-900 truncate">{server.name}</h3>
               <span className={clsx(
-                'badge text-xs',
+                'badge text-xs px-1.5 py-0.5 flex-shrink-0',
                 server.type === 'stdio' && 'badge-info',
                 server.type === 'http' && 'badge-warning',
                 server.type === 'hosted' && 'badge-success'
               )}>
-                {server.type.toUpperCase()}
+                {server.type}
               </span>
-              {server.url && (
-                <span className="text-xs text-gray-500 truncate max-w-xs">
-                  {server.url}
-                </span>
-              )}
             </div>
+            {server.url && (
+              <span className="text-xs text-gray-500 truncate block">
+                {server.url}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Status indicator */}
+        {/* Compact Actions */}
+        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+          {/* Status badge */}
           <div className={clsx(
-            'flex items-center gap-2 px-3 py-1 rounded-full text-sm',
+            'flex items-center gap-1 px-2 py-1 rounded-full text-xs',
             getStatusColor(server.status)
           )}>
             {getStatusIcon(server.status)}
-            <span className="font-medium capitalize">
-              {server.status}
-            </span>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-1">
-            {isHosted && hasDefaultTools && (
-              <button
-                onClick={handleDiscoverTools}
-                disabled={isDiscovering}
-                className={clsx(
-                  'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-                  isDiscovering 
-                    ? 'bg-blue-100 text-blue-600 cursor-wait'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                )}
-                title="MCP araçlarını keşfet"
-              >
-                {isDiscovering ? (
-                  <>
-                    <RefreshCw className="w-3 h-3 inline animate-spin mr-1" />
-                    Keşfediliyor...
-                  </>
-                ) : (
-                  <>
-                    <Wrench className="w-3 h-3 inline mr-1" />
-                    Araçları Keşfet
-                  </>
-                )}
-              </button>
-            )}
-            
+          {isHosted && hasDefaultTools && (
             <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-              title="Sunucuyu yenile"
+              onClick={handleDiscoverTools}
+              disabled={isDiscovering}
+              className={clsx(
+                'p-1.5 rounded transition-colors text-xs',
+                isDiscovering
+                  ? 'bg-blue-100 text-blue-600 cursor-wait'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              )}
+              title="MCP araçlarını keşfet"
             >
-              <RefreshCw className={clsx(
-                'w-4 h-4',
-                isRefreshing && 'animate-spin'
-              )} />
+              {isDiscovering ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Wrench className="w-3.5 h-3.5" />
+              )}
             </button>
+          )}
 
-            <button
-              onClick={() => onConfigureServer?.(server.id)}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-              title="Sunucu ayarları"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"
+            title="Yenile"
+          >
+            <RefreshCw className={clsx('w-3.5 h-3.5', isRefreshing && 'animate-spin')} />
+          </button>
 
-            <button
-              onClick={() => onDeleteServer?.(server.id)}
-              className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-              title="Sunucuyu sil"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={() => onDeleteServer?.(server.id)}
+            className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50"
+            title="Sil"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
-      {/* Server Stats */}
-      <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-100">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-gray-900">
-            {server.tools.length}
-          </div>
-          <div className="text-sm text-gray-600">Toplam Araç</div>
+      {/* Compact Stats */}
+      <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100 text-xs">
+        <div className="flex items-center gap-1">
+          <Wrench className="w-3.5 h-3.5 text-gray-400" />
+          <span className="font-semibold text-gray-900">{server.tools.length}</span>
+          <span className="text-gray-600">araç</span>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-green-600">
-            {connectedTools.length}
-          </div>
-          <div className="text-sm text-gray-600">Aktif Araç</div>
-        </div>
-        <div className="text-center">
-          <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
-            <Clock className="w-4 h-4" />
-            {new Date(server.lastHealthCheck).toLocaleTimeString('tr-TR')}
-          </div>
-          <div className="text-xs text-gray-500">Son Kontrol</div>
+        <div className="flex items-center gap-1">
+          <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+          <span className="font-semibold text-green-600">{connectedTools.length}</span>
+          <span className="text-gray-600">aktif</span>
         </div>
       </div>
 
-      {/* Tools Section */}
+      {/* Compact Tools Section */}
       {server.tools.length > 0 && (
         <>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full flex items-center justify-between mt-4 pt-4 border-t border-gray-100 text-left hover:bg-gray-50 p-2 rounded-lg transition-colors duration-200"
+            className="w-full flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-left hover:bg-gray-50 px-2 py-1 rounded transition-colors"
           >
-            <div className="flex items-center gap-2">
-              <Wrench className="w-4 h-4 text-gray-600" />
-              <span className="font-medium text-gray-700">
-                Araçlar ({server.tools.length})
-              </span>
-            </div>
+            <span className="text-xs font-medium text-gray-700">
+              Araç Listesi ({server.tools.length})
+            </span>
             {isExpanded ? (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
             ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
             )}
           </button>
 
           {isExpanded && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 space-y-1">
               {server.tools.map((tool) => (
                 <ToolItem
                   key={tool.name}
@@ -282,14 +245,6 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
             </div>
           )}
         </>
-      )}
-
-      {/* No tools message */}
-      {server.tools.length === 0 && isConnected && (
-        <div className="mt-4 pt-4 border-t border-gray-100 text-center text-gray-500">
-          <Wrench className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">Kullanılabilir araç bulunamadı</p>
-        </div>
       )}
     </div>
   );
@@ -310,39 +265,35 @@ const ToolItem: React.FC<ToolItemProps> = ({
 }) => {
   return (
     <div className={clsx(
-      'flex items-center justify-between p-3 rounded-lg border',
+      'flex items-center justify-between p-2 rounded border text-xs',
       tool.enabled ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
     )}>
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <h4 className="font-medium text-sm text-gray-900">
+      <div className="flex-1 min-w-0 mr-2">
+        <div className="flex items-center gap-1.5">
+          <h4 className="font-medium text-gray-900 truncate">
             {tool.name}
           </h4>
-          <span className={clsx(
-            'badge text-xs',
-            tool.enabled ? 'badge-success' : 'badge-error'
-          )}>
-            {tool.enabled ? 'Aktif' : 'Pasif'}
-          </span>
         </div>
-        <p className="text-xs text-gray-600 mt-1">
-          {tool.description}
-        </p>
+        {tool.description && (
+          <p className="text-xs text-gray-600 truncate">
+            {tool.description}
+          </p>
+        )}
       </div>
 
       <button
         onClick={() => onToggleTool?.(serverId, tool.name)}
         disabled={!isServerConnected}
         className={clsx(
-          'ml-3 w-10 h-6 rounded-full relative transition-colors duration-200',
+          'w-8 h-5 rounded-full relative transition-colors flex-shrink-0',
           'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500',
           tool.enabled ? 'bg-green-600' : 'bg-gray-300',
           !isServerConnected && 'opacity-50 cursor-not-allowed'
         )}
       >
         <div className={clsx(
-          'w-4 h-4 bg-white rounded-full absolute top-1 transition-transform duration-200',
-          tool.enabled ? 'translate-x-5' : 'translate-x-1'
+          'w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-200',
+          tool.enabled ? 'translate-x-4' : 'translate-x-1'
         )} />
       </button>
     </div>

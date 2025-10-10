@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import express from 'express';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
-import { run, hostedMcpTool, MCPServerStreamableHttp, getAllMcpTools } from '@openai/agents';
+import { run, hostedMcpTool, MCPServerStreamableHttp } from '@openai/agents';
 import { logger } from '../utils/logger.js';
 import { env } from '../config/env.js';
 import { researchAgents } from '../research/agents.js';
@@ -56,7 +56,9 @@ export class WebSocketServer {
   private researchManager: ResearchManager;
   private mcpServers: any[] = [];
   private mcpTools: any[] = [];
+  private mcpToolsMap: Map<string, any> = new Map(); // serverLabel -> hosted tool mapping
   private mcpToolRegistry: Map<string, any[]> = new Map();
+  private discoveryLocks: Map<string, Promise<number>> = new Map(); // serverLabel -> discovery promise (deduplication)
   private mcpConfigPath: string = path.resolve(process.cwd(), 'mcp.json');
 
   constructor() {
@@ -109,12 +111,14 @@ export class WebSocketServer {
             this.mcpServers.push(httpServer);
             logger.info(`✅ MCP HTTP Server initialized: ${cfg.name}`);
           } else if (cfg.type === 'hosted') {
+            const serverLabel = cfg.serverLabel || cfg.name;
             const hosted = hostedMcpTool({
-              serverLabel: cfg.serverLabel || cfg.name,
+              serverLabel: serverLabel,
               serverUrl: cfg.serverUrl || cfg.url!
             });
             this.mcpTools.push(hosted);
-            logger.info(`✅ MCP Hosted Tool initialized: ${cfg.name}`);
+            this.mcpToolsMap.set(serverLabel, hosted); // Store mapping for discovery
+            logger.info(`✅ MCP Hosted Tool initialized: ${cfg.name} (label: ${serverLabel})`);
           } else if (cfg.type === 'stdio') {
             logger.warn(`⚠️ STDIO MCP servers not yet implemented: ${cfg.name}`);
           } else {
@@ -167,69 +171,53 @@ export class WebSocketServer {
       try {
         const allTools: any[] = [];
 
-        logger.debug(`📊 MCP Status: ${this.mcpServers.length} HTTP servers, ${this.mcpTools.length} hosted tools`);
+        logger.debug(`📊 MCP Tool Registry has ${this.mcpToolRegistry.size} servers`);
 
-        // Get tools from HTTP MCP servers using getAllMcpTools
-        if (this.mcpServers.length > 0) {
-          try {
-            const httpTools = await getAllMcpTools(this.mcpServers);
-
-            // Group tools by server
-            const toolsByServer = new Map<string, any[]>();
-            for (const tool of httpTools) {
-              const serverName = tool.serverLabel || 'unknown';
-              if (!toolsByServer.has(serverName)) {
-                toolsByServer.set(serverName, []);
-              }
-              toolsByServer.get(serverName)!.push(tool);
-            }
-
-            // Add to results
-            for (const [serverName, tools] of toolsByServer.entries()) {
-              allTools.push({
-                serverId: serverName,
-                serverType: 'http',
-                tools: tools.map(t => ({
-                  name: t.name,
-                  description: t.description || '',
-                  inputSchema: t.inputSchema || {}
-                }))
-              });
-            }
-          } catch (e) {
-            logger.error('Failed to get tools from HTTP MCP servers:', e);
+        // Return cached tools from registry (populated during agent runs)
+        for (const [serverName, tools] of this.mcpToolRegistry.entries()) {
+          if (tools.length > 0) {
+            allTools.push({
+              serverId: serverName,
+              serverType: 'cached',
+              tools: tools.map((t: any) => ({
+                name: t.name || t.toolName,
+                description: t.description || t.desc || '',
+                inputSchema: t.inputSchema || t.parameters || {}
+              }))
+            });
           }
         }
 
-        // Get tools from Hosted MCP servers using getAllMcpTools
-        if (this.mcpTools.length > 0) {
-          try {
-            const hostedTools = await getAllMcpTools(this.mcpTools);
+        // If no cached tools, trigger discovery for hosted servers and wait for first result
+        if (allTools.length === 0) {
+          const configs = await this.readMcpConfig();
+          const hostedConfigs = configs.filter(cfg => cfg.type === 'hosted');
 
-            // Group tools by server
-            const toolsByServer = new Map<string, any[]>();
-            for (const tool of hostedTools) {
-              const serverName = tool.serverLabel || 'unknown';
-              if (!toolsByServer.has(serverName)) {
-                toolsByServer.set(serverName, []);
+          if (hostedConfigs.length > 0) {
+            // Only discover the first server and await it (prevents rate limit)
+            const firstConfig = hostedConfigs[0];
+            const serverLabel = firstConfig.serverLabel || firstConfig.name;
+            logger.info(`🔍 No cached tools, discovering ${serverLabel}...`);
+
+            try {
+              const count = await this.discoverToolsFor(serverLabel);
+
+              // After discovery, check registry again
+              const tools = this.mcpToolRegistry.get(serverLabel);
+              if (tools && tools.length > 0) {
+                allTools.push({
+                  serverId: serverLabel,
+                  serverType: 'discovered',
+                  tools: tools.map((t: any) => ({
+                    name: t.name || t.toolName,
+                    description: t.description || t.desc || '',
+                    inputSchema: t.inputSchema || t.parameters || {}
+                  }))
+                });
               }
-              toolsByServer.get(serverName)!.push(tool);
+            } catch (err) {
+              logger.error(`Failed to discover tools for ${serverLabel}:`, err);
             }
-
-            // Add to results
-            for (const [serverName, tools] of toolsByServer.entries()) {
-              allTools.push({
-                serverId: serverName,
-                serverType: 'hosted',
-                tools: tools.map(t => ({
-                  name: t.name,
-                  description: t.description || '',
-                  inputSchema: t.inputSchema || {}
-                }))
-              });
-            }
-          } catch (e) {
-            logger.error('Failed to get tools from Hosted MCP servers:', e);
           }
         }
 
@@ -1241,56 +1229,99 @@ export class WebSocketServer {
   // Explicitly discover tools for a server label/name and cache results
   private async discoverToolsFor(serverLabel: string): Promise<number> {
     try {
-      logger.info(`🔍 Discovering tools for ${serverLabel}...`);
-      
-      // Find the hosted tool
-      const hosted = this.mcpTools.find((t: any) => 
-        (t as any).serverLabel === serverLabel || (t as any).name === serverLabel
-      );
-      
-      if (!hosted) {
-        logger.warn(`⚠️ No hosted tool found for ${serverLabel}`);
-        return 0;
+      // Check if tools are already cached
+      const cached = this.mcpToolRegistry.get(serverLabel);
+      if (cached && cached.length > 0) {
+        logger.info(`✅ Using cached tools for ${serverLabel}: ${cached.length} tools`);
+        return cached.length;
       }
 
-      // Create a temporary agent with the hosted tool to discover available tools
-      const { Agent } = await import('@openai/agents');
-      const discoveryAgent = new Agent({
-        name: 'Tool Discovery Agent',
-        instructions: 'You help discover available MCP tools. Call mcp_list_tools to list all available tools.',
-        model: env.OPENAI_MODEL,
-        tools: [hosted]
-      });
-
-      // Run the agent to trigger tool discovery
-      logger.info(`🤖 Running discovery agent for ${serverLabel}...`);
-      const result = await run(discoveryAgent, `List all available tools for ${serverLabel}`, {
-        stream: false
-      } as any);
-
-      logger.info(`✅ Discovery agent completed for ${serverLabel}`);
-
-      // Try to get tools using getAllMcpTools
-      const allTools = await getAllMcpTools({ 
-        servers: this.mcpServers, 
-        tools: [hosted] 
-      } as any);
-      
-      const items = Array.isArray(allTools) ? allTools : 
-                   (Array.isArray((allTools as any)?.tools) ? (allTools as any).tools : []);
-      
-      if (items.length > 0) {
-        this.mcpToolRegistry.set(serverLabel, items);
-        logger.info(`✅ Cached ${items.length} tools for ${serverLabel}`);
-        return items.length;
+      // Check if discovery is already in progress (deduplication)
+      const existingLock = this.discoveryLocks.get(serverLabel);
+      if (existingLock) {
+        logger.info(`⏳ Discovery already in progress for ${serverLabel}, waiting...`);
+        return await existingLock;
       }
 
-      logger.warn(`⚠️ No tools discovered for ${serverLabel}`);
-      return 0;
+      // Create new discovery promise
+      const discoveryPromise = this.performDiscovery(serverLabel);
+      this.discoveryLocks.set(serverLabel, discoveryPromise);
+
+      try {
+        const result = await discoveryPromise;
+        return result;
+      } finally {
+        // Remove lock after completion
+        this.discoveryLocks.delete(serverLabel);
+      }
     } catch (e: any) {
       logger.error(`❌ Failed to discover tools for ${serverLabel}:`, e?.message || e);
+      this.discoveryLocks.delete(serverLabel);
       return 0;
     }
+  }
+
+  // Actual discovery implementation (separated for lock management)
+  private async performDiscovery(serverLabel: string): Promise<number> {
+    logger.info(`🔍 Discovering tools for ${serverLabel}...`);
+
+    // Find the hosted tool from our map
+    const hosted = this.mcpToolsMap.get(serverLabel);
+
+    if (!hosted) {
+      logger.warn(`⚠️ No hosted tool found for ${serverLabel}. Available: ${Array.from(this.mcpToolsMap.keys()).join(', ')}`);
+      return 0;
+    }
+
+    // Create a temporary agent with the hosted tool to discover available tools
+    const { Agent } = await import('@openai/agents');
+    const discoveryAgent = new Agent({
+      name: 'Tool Discovery Agent',
+      instructions: 'You help discover available MCP tools. Call mcp_list_tools to list all available tools.',
+      model: env.OPENAI_MODEL,
+      tools: [hosted]
+    });
+
+    // Run the agent to trigger tool discovery
+    logger.info(`🤖 Running discovery agent for ${serverLabel}...`);
+    const result = await run(discoveryAgent, `List all available tools for ${serverLabel}`, {
+      stream: false
+    } as any);
+
+    logger.info(`✅ Discovery agent completed for ${serverLabel}`);
+
+    // Extract tools from the agent result
+    if (result && typeof result === 'object') {
+      const resultObj = result as any;
+      let tools: any[] = [];
+
+      // Access _modelResponses (private property) from the result state
+      const modelResponses = resultObj.state?._modelResponses || resultObj.state?.modelResponses;
+      if (modelResponses && Array.isArray(modelResponses)) {
+        for (const response of modelResponses) {
+          if (response.output) {
+            for (const output of response.output) {
+              // Tools are located in output.providerData.tools for hosted_tool_call type
+              if (output.type === 'hosted_tool_call' && output.providerData?.tools) {
+                tools = output.providerData.tools;
+                logger.info(`✅ Discovered ${tools.length} tools from ${serverLabel}`);
+                break;
+              }
+            }
+          }
+          if (tools.length > 0) break;
+        }
+      }
+
+      if (tools.length > 0) {
+        this.mcpToolRegistry.set(serverLabel, tools);
+        logger.info(`✅ Cached ${tools.length} tools for ${serverLabel}`);
+        return tools.length;
+      }
+    }
+
+    logger.warn(`⚠️ No tools discovered for ${serverLabel}`);
+    return 0;
   }
 
   private async readMcpConfig(): Promise<Array<{ name: string; type: 'hosted' | 'http' | 'stdio'; url?: string; serverLabel?: string; serverUrl?: string }>> {

@@ -71,6 +71,21 @@ export const MCPDashboard: React.FC<MCPDashboardProps> = ({
   const handleRefreshAll = async () => {
     if (onRefreshAll && !isRefreshing) {
       setIsRefreshing(true);
+
+      // Trigger discovery for all hosted servers
+      const hostedServers = servers.filter(s => s.type === 'hosted');
+      for (const server of hostedServers) {
+        const serverLabel = server.metadata?.serverLabel || server.name;
+        try {
+          await fetch(`/api/mcp/discover?server=${encodeURIComponent(serverLabel)}`, {
+            method: 'POST'
+          });
+        } catch (error) {
+          console.error(`Failed to discover tools for ${serverLabel}:`, error);
+        }
+      }
+
+      // Then refresh all servers
       await onRefreshAll();
       setTimeout(() => setIsRefreshing(false), 2000);
     }

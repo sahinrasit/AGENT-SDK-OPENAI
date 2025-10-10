@@ -135,7 +135,10 @@ export default function SessionList({ onSessionSelect, activeSessionId, onNaviga
                 key={session.id}
                 session={session}
                 isActive={session.id === activeSessionId}
-                onSelect={() => onSessionSelect(session.id)}
+                onSelect={() => {
+                  if (onNavigateToChat) onNavigateToChat();
+                  onSessionSelect(session.id);
+                }}
                 onPin={() => handlePin(session.id, session.is_pinned)}
                 onDelete={() => handleDelete(session.id)}
                 formatDate={formatDate}
@@ -154,7 +157,10 @@ export default function SessionList({ onSessionSelect, activeSessionId, onNaviga
               key={session.id}
               session={session}
               isActive={session.id === activeSessionId}
-              onSelect={() => onSessionSelect(session.id)}
+              onSelect={() => {
+                if (onNavigateToChat) onNavigateToChat();
+                onSessionSelect(session.id);
+              }}
               onPin={() => handlePin(session.id, session.is_pinned)}
               onDelete={() => handleDelete(session.id)}
               formatDate={formatDate}

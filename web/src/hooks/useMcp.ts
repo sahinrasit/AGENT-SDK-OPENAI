@@ -14,63 +14,117 @@ export const useMcp = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isLoadingRef = useRef(false);
+  const discoveryTriggeredRef = useRef(false); // Track if discovery has been triggered
 
   const loadServersAndTools = useCallback(async () => {
     if (isLoadingRef.current) return; // Prevent concurrent requests
-    
+
     isLoadingRef.current = true;
     try {
-      // Fetch server list from mcp.json config
+      // 1. Fetch server list from mcp.json config - SHOW IMMEDIATELY
       const serversRes = await fetch('/api/mcp/config');
       const serversList = await serversRes.json();
 
       if (!Array.isArray(serversList)) return;
 
-      // Fetch all tools at once
-      const toolsRes = await fetch('/api/mcp/tools');
-      const toolsData = await toolsRes.json();
+      // 2. Map config entries to MCPServer format WITHOUT TOOLS (show empty)
+      const serversWithoutTools = serversList.map((s: any) => ({
+        id: s.name,
+        name: s.name,
+        type: s.type,
+        status: 'connected' as const,
+        url: s.serverUrl || s.url || '',
+        tools: [], // Start with empty tools
+        lastHealthCheck: new Date(),
+        metadata: { serverLabel: s.serverLabel || s.name }
+      }));
 
-      // Map config entries to MCPServer format with tools
-      const updatedServers = serversList.map((s: any) => {
-        const serverTools = toolsData.success && Array.isArray(toolsData.tools)
-          ? toolsData.tools.find((t: any) =>
-              t.serverId === s.name ||
-              t.serverId === s.serverLabel
-            )
-          : null;
-
-        return {
-          id: s.name, // Unique ID based on name
-          name: s.name,
-          type: s.type,
-          status: 'connected',
-          url: s.serverUrl || s.url || '',
-          tools: serverTools && Array.isArray(serverTools.tools)
-            ? serverTools.tools.map((t: any) => ({
-                name: t.name || t.toolName || 'unknown',
-                description: t.description || t.desc || '',
-                parameters: t.inputSchema || t.parameters || {},
-                enabled: true
-              }))
-            : [],
-          lastHealthCheck: new Date(),
-          metadata: { serverLabel: s.serverLabel || s.name }
-        };
-      });
-
-      // Remove duplicates based on ID
-      const uniqueServers = updatedServers.filter((server, index, self) =>
+      // Remove duplicates
+      const uniqueServers = serversWithoutTools.filter((server, index, self) =>
         index === self.findIndex((s) => s.id === server.id)
       );
 
+      // 3. SET SERVERS IMMEDIATELY (show on screen without tools)
       setServers(uniqueServers);
+
+      // 4. Try to fetch tools (might be empty)
+      const toolsRes = await fetch('/api/mcp/tools');
+      const toolsData = await toolsRes.json();
+
+      const hasTools = toolsData.success && Array.isArray(toolsData.tools) && toolsData.tools.length > 0;
+
+      // 5. If we have tools, update servers with tools
+      if (hasTools) {
+        const serversWithTools = serversList.map((s: any) => {
+          const serverTools = toolsData.tools.find((t: any) =>
+            t.serverId === s.name || t.serverId === s.serverLabel
+          );
+
+          return {
+            id: s.name,
+            name: s.name,
+            type: s.type,
+            status: 'connected' as const,
+            url: s.serverUrl || s.url || '',
+            tools: serverTools && Array.isArray(serverTools.tools)
+              ? serverTools.tools.map((t: any) => ({
+                  name: t.name || t.toolName || 'unknown',
+                  description: t.description || t.desc || '',
+                  parameters: t.inputSchema || t.parameters || {},
+                  enabled: true
+                }))
+              : [],
+            lastHealthCheck: new Date(),
+            metadata: { serverLabel: s.serverLabel || s.name }
+          };
+        });
+
+        setServers(serversWithTools.filter((server, index, self) =>
+          index === self.findIndex((s) => s.id === server.id)
+        ));
+
+        // Reset discovery flag when tools are found
+        discoveryTriggeredRef.current = false;
+      } else {
+        // 6. No tools, trigger background discovery ONLY ONCE
+        const needsDiscovery = serversList.filter(s => s.type === 'hosted');
+        if (needsDiscovery.length > 0 && !discoveryTriggeredRef.current) {
+          console.log('🔍 No tools found, triggering background discovery...');
+          discoveryTriggeredRef.current = true; // Mark as triggered
+
+          needsDiscovery.forEach((s: any) => {
+            const serverLabel = s.serverLabel || s.name;
+            fetch(`/api/mcp/discover?server=${encodeURIComponent(serverLabel)}`, {
+              method: 'POST'
+            })
+              .then(() => {
+                console.log(`✅ Discovery completed for ${serverLabel}, refreshing...`);
+                // Wait a bit then reload tools ONCE
+                setTimeout(() => {
+                  isLoadingRef.current = false; // Reset loading flag before refresh
+                  loadServersAndTools();
+                }, 1500);
+              })
+              .catch(err => {
+                console.error(`Failed to discover tools for ${serverLabel}:`, err);
+                discoveryTriggeredRef.current = false; // Reset on error
+              });
+          });
+        }
+      }
     } catch (error) {
       console.error('Failed to load MCP servers:', error);
       setError('Failed to load MCP servers');
     } finally {
-      isLoadingRef.current = false;
+      // Only reset if no discovery is pending
+      if (!discoveryTriggeredRef.current) {
+        isLoadingRef.current = false;
+      }
     }
   }, []);
+
+  // Load servers and tools only once when component mounts and is connected
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (!isConnected) return;
@@ -107,15 +161,17 @@ export const useMcp = () => {
 
     on('mcp:status', handleStatus);
 
-    // Load servers only once when connected - use ref to prevent infinite loop
-    if (!isLoadingRef.current) {
+    // Load servers ONLY ONCE when first connected
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
       loadServersAndTools();
     }
 
     return () => {
       off('mcp:status', handleStatus);
     };
-  }, [isConnected, on, off]) // Removed loadServersAndTools from dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]) // Only isConnected - other deps would cause infinite loop
 
   const connectServer = useCallback((config: McpServerConfig) => {
     if (!isConnected) return;
