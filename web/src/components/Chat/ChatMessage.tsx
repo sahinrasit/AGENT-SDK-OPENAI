@@ -1,9 +1,14 @@
-import React from 'react';
-import { Bot, User, Clock, CheckCircle, AlertCircle, Wrench } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bot, User, Clock, CheckCircle, AlertCircle, Wrench, Copy, Check } from 'lucide-react';
 import { Message, AgentType } from '../../types/agent';
 import { clsx } from 'clsx';
 import { ToolCallDisplay } from './ToolCallDisplay';
 import { ThinkingIndicator } from './ThinkingIndicator';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface ChatMessageProps {
   message: Message;
@@ -45,6 +50,49 @@ const TypingIndicator: React.FC = () => (
     <span className="text-sm">Agent is thinking...</span>
   </div>
 );
+
+const CodeBlock: React.FC<{ code: string; language?: string; isUser: boolean }> = ({ code, language, isUser }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative group my-3">
+      <button
+        onClick={handleCopy}
+        className={clsx(
+          "absolute right-3 top-3 p-1.5 rounded transition-all opacity-0 group-hover:opacity-100 z-10",
+          "bg-gray-700 hover:bg-gray-600 text-white shadow-md"
+        )}
+        title="Kodu kopyala"
+      >
+        {copied ? (
+          <Check className="w-4 h-4" />
+        ) : (
+          <Copy className="w-4 h-4" />
+        )}
+      </button>
+      <SyntaxHighlighter
+        language={language || 'text'}
+        style={vscDarkPlus}
+        customStyle={{
+          margin: 0,
+          borderRadius: '0.5rem',
+          fontSize: '0.875rem',
+          padding: '1rem',
+          paddingRight: '3rem',
+        }}
+        showLineNumbers={false}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+};
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming = false }) => {
   const isUser = message.type === 'user';
@@ -154,14 +202,95 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
           {isStreaming && !message.content ? (
             <TypingIndicator />
           ) : (
-            <div className="prose prose-sm max-w-none">
-              <p className="mb-0 whitespace-pre-wrap leading-relaxed" style={{
-                color: isUser ? 'white' : '#1f2937'
-              }}>
+            <div className={clsx(
+              "prose prose-sm max-w-none markdown-content",
+              isUser ? "prose-invert" : ""
+            )}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+                components={{
+                  // Custom renderers for better styling
+                  p: ({ children }) => (
+                    <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+                  ),
+                  code: ({ inline, className, children, ...props }: any) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    const codeString = String(children).replace(/\n$/, '');
+
+                    if (!inline) {
+                      return <CodeBlock code={codeString} language={match?.[1]} isUser={isUser} />;
+                    }
+
+                    return (
+                      <code className={clsx(
+                        "px-1.5 py-0.5 rounded text-sm font-mono",
+                        isUser ? "bg-white/20" : "bg-gray-100 text-pink-600"
+                      )} {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                  pre: ({ children }) => <>{children}</>,
+                  ul: ({ children }) => (
+                    <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="leading-relaxed">{children}</li>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-bold">{children}</strong>
+                  ),
+                  em: ({ children }) => (
+                    <em className="italic">{children}</em>
+                  ),
+                  a: ({ children, href }) => (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={clsx(
+                        "underline hover:no-underline",
+                        isUser ? "text-white" : "text-blue-600"
+                      )}
+                    >
+                      {children}
+                    </a>
+                  ),
+                  blockquote: ({ children }) => (
+                    <blockquote className={clsx(
+                      "border-l-4 pl-4 italic my-2",
+                      isUser ? "border-white/30" : "border-gray-300"
+                    )}>
+                      {children}
+                    </blockquote>
+                  ),
+                  table: ({ children }) => (
+                    <div className="overflow-x-auto my-2">
+                      <table className="min-w-full border-collapse border border-gray-300">
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  th: ({ children }) => (
+                    <th className="border border-gray-300 px-3 py-2 bg-gray-100 font-semibold text-left">
+                      {children}
+                    </th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="border border-gray-300 px-3 py-2">
+                      {children}
+                    </td>
+                  ),
+                }}
+              >
                 {typeof message.content === 'string'
                   ? message.content
                   : JSON.stringify(message.content, null, 2)}
-              </p>
+              </ReactMarkdown>
             </div>
           )}
 

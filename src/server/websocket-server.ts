@@ -518,6 +518,18 @@ export class WebSocketServer {
               metadata: {}
             });
             logger.debug(`💾 User message persisted to database`);
+
+            // Update session title if this is the first message
+            if (session.messages.length === 1) {
+              const { sessionRepository } = await import('../db/repositories/session-repository.js');
+              // Create a short title from the first message (max 60 chars)
+              const title = data.message.length > 60
+                ? data.message.substring(0, 57) + '...'
+                : data.message;
+
+              await sessionRepository.update(data.sessionId, { title });
+              logger.debug(`📝 Session title updated to: "${title}"`);
+            }
           } catch (dbError) {
             logger.error('Failed to persist user message:', dbError);
           }

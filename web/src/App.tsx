@@ -81,7 +81,6 @@ function App() {
   });
 
   const navigation = [
-    { id: 'chat', name: 'Sohbet', icon: MessageSquare, view: 'chat' as ViewType },
     { id: 'mcp', name: 'MCP Sunucular', icon: Database, view: 'mcp' as ViewType },
     { id: 'agents', name: 'Ajanlar', icon: Users, view: 'agents' as ViewType },
     { id: 'analytics', name: 'Analitik', icon: Activity, view: 'analytics' as ViewType },
@@ -499,6 +498,7 @@ function App() {
                   <SessionList
                     onSessionSelect={handleSessionSelect}
                     activeSessionId={activeSessionId}
+                    onNavigateToChat={() => navigateTo('chat')}
                   />
                 </div>
               )}

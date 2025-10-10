@@ -11,15 +11,21 @@ import { clsx } from 'clsx';
 interface SessionListProps {
   onSessionSelect: (sessionId: string) => void;
   activeSessionId?: string;
+  onNavigateToChat?: () => void;
 }
 
-export default function SessionList({ onSessionSelect, activeSessionId }: SessionListProps) {
+export default function SessionList({ onSessionSelect, activeSessionId, onNavigateToChat }: SessionListProps) {
   const { sessions, loading, createSession, deleteSession, pinSession, searchSessions } =
     useSessions();
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleNewChat = async () => {
     try {
+      // Navigate to chat view first
+      if (onNavigateToChat) {
+        onNavigateToChat();
+      }
+
       // Check if current active session is empty (no messages)
       const activeSession = sessions.find(s => s.id === activeSessionId);
 
@@ -193,8 +199,11 @@ function SessionItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
             {session.is_pinned && <span className="text-xs">📌</span>}
-            <h3 className="text-sm font-medium text-gray-900 truncate line-clamp-1">
-              {session.title}
+            <h3 className={clsx(
+              "text-sm font-medium truncate line-clamp-1",
+              session.message_count === 0 ? "text-gray-400 italic" : "text-gray-900"
+            )}>
+              {session.message_count === 0 ? 'Yeni sohbet...' : session.title}
             </h3>
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
