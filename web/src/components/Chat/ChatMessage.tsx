@@ -61,21 +61,25 @@ const CodeBlock: React.FC<{ code: string; language?: string; isUser: boolean }> 
   };
 
   return (
-    <div className="relative group my-3">
-      <button
-        onClick={handleCopy}
-        className={clsx(
-          "absolute right-3 top-3 p-1.5 rounded transition-all opacity-0 group-hover:opacity-100 z-10",
-          "bg-gray-700 hover:bg-gray-600 text-white shadow-md"
-        )}
-        title="Kodu kopyala"
-      >
-        {copied ? (
-          <Check className="w-4 h-4" />
-        ) : (
-          <Copy className="w-4 h-4" />
-        )}
-      </button>
+    <div className="relative group my-3 rounded-lg overflow-hidden">
+      <div className="absolute right-2 top-2 z-50">
+        <button
+          onClick={handleCopy}
+          className={clsx(
+            "p-2 rounded transition-all",
+            copied
+              ? "bg-green-600 text-white"
+              : "bg-gray-700 hover:bg-gray-600 text-white opacity-80 hover:opacity-100"
+          )}
+          title={copied ? "Kopyalandı!" : "Kodu kopyala"}
+        >
+          {copied ? (
+            <Check className="w-4 h-4" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </button>
+      </div>
       <SyntaxHighlighter
         language={language || 'text'}
         style={vscDarkPlus}
@@ -84,7 +88,7 @@ const CodeBlock: React.FC<{ code: string; language?: string; isUser: boolean }> 
           borderRadius: '0.5rem',
           fontSize: '0.875rem',
           padding: '1rem',
-          paddingRight: '3rem',
+          paddingRight: '3.5rem',
         }}
         showLineNumbers={false}
       >
