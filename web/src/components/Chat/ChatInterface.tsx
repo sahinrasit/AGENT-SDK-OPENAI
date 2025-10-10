@@ -126,6 +126,37 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               />
             ))}
 
+            {/* Thinking Indicator - shown when loading and no streaming message yet */}
+            {isLoading && !streamingMessageId && (
+              <div className="flex gap-3 mb-4 max-w-4xl mr-auto">
+                {/* Avatar */}
+                <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center shadow-sm bg-white border-2 border-gray-200">
+                  <img
+                    src="/aicoe.jpeg"
+                    alt="AiCoE"
+                    className="w-5 h-5 object-contain"
+                  />
+                </div>
+
+                {/* Thinking bubble */}
+                <div className="flex-1 max-w-[75%]">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="font-semibold text-sm text-gray-800">AiCoE</span>
+                  </div>
+                  <div className="inline-block rounded-2xl px-4 py-3 shadow-md bg-white border border-gray-200">
+                    <div className="flex items-center gap-3 text-gray-600">
+                      <div className="typing-indicator">
+                        <div className="typing-dot"></div>
+                        <div className="typing-dot"></div>
+                        <div className="typing-dot"></div>
+                      </div>
+                      <span className="text-sm">Düşünüyor...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Tool Approval Cards */}
             {pendingApprovals.length > 0 && onApproveToolCall && onRejectToolCall && (
               <div className="space-y-3">

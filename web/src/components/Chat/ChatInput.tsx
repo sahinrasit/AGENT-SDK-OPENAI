@@ -151,18 +151,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
         )}
 
-        {/* Loading indicator */}
-        {isLoading && (
-          <div className="flex items-center justify-center mt-3 text-gray-600">
-            <div className="typing-indicator mr-3">
-              <div className="typing-dot"></div>
-              <div className="typing-dot"></div>
-              <div className="typing-dot"></div>
-            </div>
-            <span className="text-sm">Ajan düşünüyor...</span>
-          </div>
-        )}
-
         {/* Quick actions */}
         <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
           <div className="flex items-center gap-4">
