@@ -4,17 +4,13 @@ import {
   Globe,
   Terminal,
   Circle,
-  Settings,
   Trash2,
   RefreshCw,
-  ChevronDown,
-  ChevronRight,
   Wrench,
   CheckCircle,
-  XCircle,
-  Clock
+  XCircle
 } from 'lucide-react';
-import { MCPServer, MCPTool } from '../../types/agent';
+import { MCPServer } from '../../types/agent';
 import { clsx } from 'clsx';
 
 interface MCPServerCardProps {
@@ -71,13 +67,10 @@ const getStatusIcon = (status: MCPServer['status']) => {
 
 export const MCPServerCard: React.FC<MCPServerCardProps> = ({
   server,
-  onToggleServer,
   onDeleteServer,
   onRefreshServer,
-  onToggleTool,
-  onConfigureServer
+  onToggleTool
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDiscovering, setIsDiscovering] = useState(false);
 
@@ -247,52 +240,3 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
   );
 };
 
-interface ToolItemProps {
-  tool: MCPTool;
-  serverId: string;
-  isServerConnected: boolean;
-  onToggleTool?: (serverId: string, toolName: string) => void;
-}
-
-const ToolItem: React.FC<ToolItemProps> = ({
-  tool,
-  serverId,
-  isServerConnected,
-  onToggleTool
-}) => {
-  return (
-    <div className={clsx(
-      'flex items-center justify-between p-2 rounded border text-xs',
-      tool.enabled ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
-    )}>
-      <div className="flex-1 min-w-0 mr-2">
-        <div className="flex items-center gap-1.5">
-          <h4 className="font-medium text-gray-900 truncate">
-            {tool.name}
-          </h4>
-        </div>
-        {tool.description && (
-          <p className="text-xs text-gray-600 truncate">
-            {tool.description}
-          </p>
-        )}
-      </div>
-
-      <button
-        onClick={() => onToggleTool?.(serverId, tool.name)}
-        disabled={!isServerConnected}
-        className={clsx(
-          'w-8 h-5 rounded-full relative transition-colors flex-shrink-0',
-          'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500',
-          tool.enabled ? 'bg-green-600' : 'bg-gray-300',
-          !isServerConnected && 'opacity-50 cursor-not-allowed'
-        )}
-      >
-        <div className={clsx(
-          'w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-200',
-          tool.enabled ? 'translate-x-4' : 'translate-x-1'
-        )} />
-      </button>
-    </div>
-  );
-};

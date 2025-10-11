@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ChatInterface } from './components/Chat/ChatInterface';
 import { MCPDashboard } from './components/Dashboard/MCPDashboard';
+import { SettingsPanel } from './components/Settings/SettingsPanel';
+import { AnalyticsPanel } from './components/Analytics/AnalyticsPanel';
 import { useChat } from './hooks/useChat';
 import { AgentType, MCPServer } from './types/agent';
 import { useMcp } from './hooks/useMcp';
@@ -30,7 +32,7 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // Sidebar collapse state
   const [sessionsExpanded, setSessionsExpanded] = useState(true); // Sessions section expand/collapse
   const [activeSessionId, setActiveSessionId] = useState<string>();
-  const { servers: mcpServers, addServer, disconnectServer } = useMcp();
+  const { servers: mcpServers, addServer, disconnectServer, toggleTool } = useMcp();
   // Simple SPA routing without external deps
   const mapViewToPath = (view: ViewType): string => {
     switch (view) {
@@ -105,6 +107,11 @@ function App() {
       case 'delete': {
         const serverId = args[0] as string | undefined;
         if (serverId) disconnectServer(serverId);
+        break;
+      }
+      case 'toggleTool': {
+        const [serverId, toolName] = args as [string, string];
+        if (serverId && toolName) toggleTool(serverId, toolName);
         break;
       }
       default:
@@ -250,48 +257,10 @@ function App() {
         );
 
       case 'analytics':
-        return (
-          <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 to-purple-50">
-            <div className="text-center max-w-md px-8">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg">
-                <Activity className="w-10 h-10 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                Analitik Panel
-              </h2>
-              <p className="text-lg text-gray-600 mb-4">
-                Performans metrikleri ve kullanım istatistikleri özellikleri yakında gelecek
-              </p>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                <p className="text-sm text-gray-500">
-                  Yakında: Kullanım raporları, performans grafikleri, sistem metrikleri ve daha fazlası
-                </p>
-              </div>
-            </div>
-          </div>
-        );
+        return <AnalyticsPanel />;
 
       case 'settings':
-        return (
-          <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 to-purple-50">
-            <div className="text-center max-w-md px-8">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg">
-                <Settings className="w-10 h-10 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                Ayarlar
-              </h2>
-              <p className="text-lg text-gray-600 mb-4">
-                Sistem yapılandırması ve kullanıcı tercihleri özellikleri yakında gelecek
-              </p>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                <p className="text-sm text-gray-500">
-                  Yakında: API ayarları, bildirim tercihleri, güvenlik yapılandırması ve daha fazlası
-                </p>
-              </div>
-            </div>
-          </div>
-        );
+        return <SettingsPanel />;
 
       default:
         return null;

@@ -1,0 +1,27 @@
+{
+  "general": {
+    "language": "tr",
+    "timezone": "Europe/Istanbul",
+    "autoSave": true
+  },
+  "api": {
+    "openaiApiKey": "",
+    "apiTimeout": 30,
+    "maxRetries": 3
+  },
+  "notifications": {
+    "emailNotifications": true,
+    "desktopNotifications": false,
+    "sessionAlerts": true
+  },
+  "security": {
+    "twoFactorAuth": false,
+    "sessionTimeout": 30,
+    "ipWhitelist": ""
+  },
+  "appearance": {
+    "theme": "light",
+    "compactMode": false,
+    "animations": true
+  }
+}

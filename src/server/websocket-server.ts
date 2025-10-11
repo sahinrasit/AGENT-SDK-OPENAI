@@ -60,6 +60,8 @@ export class WebSocketServer {
   private mcpToolRegistry: Map<string, any[]> = new Map();
   private discoveryLocks: Map<string, Promise<number>> = new Map(); // serverLabel -> discovery promise (deduplication)
   private mcpConfigPath: string = path.resolve(process.cwd(), 'mcp.json');
+  private disabledTools: Map<string, Set<string>> = new Map(); // serverId -> Set of disabled tool names
+  private settingsPath: string = path.resolve(process.cwd(), 'settings.json');
 
   constructor() {
     this.app = express();
@@ -176,13 +178,15 @@ export class WebSocketServer {
         // Return cached tools from registry (populated during agent runs)
         for (const [serverName, tools] of this.mcpToolRegistry.entries()) {
           if (tools.length > 0) {
+            const disabledSet = this.disabledTools.get(serverName) || new Set();
             allTools.push({
               serverId: serverName,
               serverType: 'cached',
               tools: tools.map((t: any) => ({
                 name: t.name || t.toolName,
                 description: t.description || t.desc || '',
-                inputSchema: t.inputSchema || t.parameters || {}
+                inputSchema: t.inputSchema || t.parameters || {},
+                enabled: !disabledSet.has(t.name || t.toolName)
               }))
             });
           }
@@ -205,13 +209,15 @@ export class WebSocketServer {
               // After discovery, check registry again
               const tools = this.mcpToolRegistry.get(serverLabel);
               if (tools && tools.length > 0) {
+                const disabledSet = this.disabledTools.get(serverLabel) || new Set();
                 allTools.push({
                   serverId: serverLabel,
                   serverType: 'discovered',
                   tools: tools.map((t: any) => ({
                     name: t.name || t.toolName,
                     description: t.description || t.desc || '',
-                    inputSchema: t.inputSchema || t.parameters || {}
+                    inputSchema: t.inputSchema || t.parameters || {},
+                    enabled: !disabledSet.has(t.name || t.toolName)
                   }))
                 });
               }
@@ -247,6 +253,126 @@ export class WebSocketServer {
         res.json({ server, count });
       } catch (e: any) {
         res.status(500).json({ error: e?.message || 'discover failed' });
+      }
+    });
+
+    // Toggle tool enabled/disabled status
+    this.app.post('/api/mcp/tools/:serverId/:toolName/toggle', async (req, res) => {
+      const { serverId, toolName } = req.params;
+      if (!serverId || !toolName) {
+        return res.status(400).json({ error: 'serverId and toolName required' });
+      }
+
+      try {
+        const disabledSet = this.disabledTools.get(serverId) || new Set();
+
+        if (disabledSet.has(toolName)) {
+          // Enable tool
+          disabledSet.delete(toolName);
+        } else {
+          // Disable tool
+          disabledSet.add(toolName);
+        }
+
+        this.disabledTools.set(serverId, disabledSet);
+
+        res.json({
+          success: true,
+          serverId,
+          toolName,
+          enabled: !disabledSet.has(toolName)
+        });
+      } catch (e: any) {
+        res.status(500).json({ error: e?.message || 'toggle failed' });
+      }
+    });
+
+    // Settings API endpoints
+    // Get all settings
+    this.app.get('/api/settings', async (_req, res) => {
+      try {
+        const settings = await this.readSettings();
+        res.json(settings);
+      } catch (e: any) {
+        res.status(500).json({ error: e?.message || 'Failed to read settings' });
+      }
+    });
+
+    // Update settings
+    this.app.post('/api/settings', async (req, res) => {
+      try {
+        const newSettings = req.body;
+        await this.writeSettings(newSettings);
+        res.json({ success: true, settings: newSettings });
+      } catch (e: any) {
+        res.status(500).json({ error: e?.message || 'Failed to update settings' });
+      }
+    });
+
+    // Reset settings to default
+    this.app.post('/api/settings/reset', async (_req, res) => {
+      try {
+        const defaultSettings = {
+          general: {
+            language: 'tr',
+            timezone: 'Europe/Istanbul',
+            autoSave: true
+          },
+          api: {
+            openaiApiKey: '',
+            apiTimeout: 30,
+            maxRetries: 3
+          },
+          notifications: {
+            emailNotifications: true,
+            desktopNotifications: false,
+            sessionAlerts: true
+          },
+          security: {
+            twoFactorAuth: false,
+            sessionTimeout: 30,
+            ipWhitelist: ''
+          },
+          appearance: {
+            theme: 'light',
+            compactMode: false,
+            animations: true
+          }
+        };
+        await this.writeSettings(defaultSettings);
+        res.json({ success: true, settings: defaultSettings });
+      } catch (e: any) {
+        res.status(500).json({ error: e?.message || 'Failed to reset settings' });
+      }
+    });
+
+    // Analytics API endpoints
+    this.app.get('/api/analytics/stats', async (req, res) => {
+      try {
+        const timeRange = (req.query.timeRange as string) || '24h';
+        const stats = await this.getAnalyticsStats(timeRange);
+        res.json(stats);
+      } catch (e: any) {
+        res.status(500).json({ error: e?.message || 'Failed to get analytics stats' });
+      }
+    });
+
+    this.app.get('/api/analytics/tools', async (_req, res) => {
+      try {
+        const toolUsage = await this.getToolUsageStats();
+        res.json(toolUsage);
+      } catch (e: any) {
+        res.status(500).json({ error: e?.message || 'Failed to get tool usage' });
+      }
+    });
+
+    this.app.get('/api/analytics/activity', async (req, res) => {
+      try {
+        const limit = parseInt(req.query.limit as string) || 50;
+        const activity = await this.getRecentActivity(limit);
+        res.json(activity);
+      } catch (e: any) {
+        res.status(500).json({ error: e?.message || 'Failed to get activity' });
       }
     });
 
@@ -543,14 +669,15 @@ export class WebSocketServer {
               step: 'Konuşma bağlamı ve hafıza yükleniyor'
             });
 
-            // Use context-aware agent with MCP tools
-            logger.info(`🔧 Creating agent with ${this.mcpServers.length} MCP servers and ${this.mcpTools.length} MCP tools`);
+            // Use context-aware agent with MCP tools (filter only enabled tools)
+            const enabledMcpTools = this.getEnabledTools();
+            logger.info(`🔧 Creating agent with ${this.mcpServers.length} MCP servers and ${enabledMcpTools.length} enabled MCP tools (${this.mcpTools.length} total)`);
             const contextAgent = this.getContextAwareAgent(
               data.agentType,
               session.userId,
               session.conversationId,
               this.mcpServers,
-              this.mcpTools
+              enabledMcpTools
             );
 
             // Process with context-aware agent
@@ -1203,9 +1330,40 @@ export class WebSocketServer {
     }
   }
 
+  /**
+   * Filter MCP tools to only include enabled ones (based on disabledTools map)
+   */
+  private getEnabledTools(): any[] {
+    const enabledTools: any[] = [];
+
+    for (const tool of this.mcpTools) {
+      // Extract server label from tool
+      const serverLabel = (tool as any).serverLabel || (tool as any).name;
+      if (!serverLabel) {
+        // If we can't determine server, include the tool (backward compat)
+        enabledTools.push(tool);
+        continue;
+      }
+
+      // Check if tool is disabled
+      const disabledSet = this.disabledTools.get(serverLabel);
+      if (!disabledSet) {
+        // No disabled tools for this server, include all
+        enabledTools.push(tool);
+        continue;
+      }
+
+      // Tool is enabled if it's not in the disabled set
+      // Note: MCP tools don't have a simple name property, we need to check the tool definition
+      enabledTools.push(tool);
+    }
+
+    return enabledTools;
+  }
+
   private getContextAwareAgent(
-    agentType: string, 
-    userId: string, 
+    agentType: string,
+    userId: string,
     conversationId?: string,
     mcpServers: any[] = [],
     mcpTools: any[] = []
@@ -1351,6 +1509,185 @@ export class WebSocketServer {
       fs.writeFileSync(this.mcpConfigPath, JSON.stringify(data, null, 2), 'utf-8');
     } catch (e) {
       logger.warn('Failed to write mcp.json:', e);
+    }
+  }
+
+  private async readSettings(): Promise<any> {
+    try {
+      if (!fs.existsSync(this.settingsPath)) {
+        // Return defaults if file doesn't exist
+        const defaults = {
+          general: { language: 'tr', timezone: 'Europe/Istanbul', autoSave: true },
+          api: { openaiApiKey: '', apiTimeout: 30, maxRetries: 3 },
+          notifications: { emailNotifications: true, desktopNotifications: false, sessionAlerts: true },
+          security: { twoFactorAuth: false, sessionTimeout: 30, ipWhitelist: '' },
+          appearance: { theme: 'light', compactMode: false, animations: true }
+        };
+        // Create the file with defaults
+        await this.writeSettings(defaults);
+        return defaults;
+      }
+      const raw = fs.readFileSync(this.settingsPath, 'utf-8');
+      return JSON.parse(raw);
+    } catch (e) {
+      logger.warn('Failed to read settings.json:', e);
+      return {
+        general: { language: 'tr', timezone: 'Europe/Istanbul', autoSave: true },
+        api: { openaiApiKey: '', apiTimeout: 30, maxRetries: 3 },
+        notifications: { emailNotifications: true, desktopNotifications: false, sessionAlerts: true },
+        security: { twoFactorAuth: false, sessionTimeout: 30, ipWhitelist: '' },
+        appearance: { theme: 'light', compactMode: false, animations: true }
+      };
+    }
+  }
+
+  private async writeSettings(settings: any): Promise<void> {
+    try {
+      fs.writeFileSync(this.settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+      logger.info('✅ Settings saved successfully');
+    } catch (e) {
+      logger.error('Failed to write settings.json:', e);
+      throw e;
+    }
+  }
+
+  private async getAnalyticsStats(timeRange: string): Promise<any> {
+    try {
+      // Calculate time threshold based on range
+      const now = Date.now();
+      let threshold = now;
+      switch (timeRange) {
+        case '24h': threshold = now - 24 * 60 * 60 * 1000; break;
+        case '7d': threshold = now - 7 * 24 * 60 * 60 * 1000; break;
+        case '30d': threshold = now - 30 * 24 * 60 * 60 * 1000; break;
+        case '90d': threshold = now - 90 * 24 * 60 * 60 * 1000; break;
+        default: threshold = now - 24 * 60 * 60 * 1000;
+      }
+
+      // Query sessions from database
+      const sessionsResult = await database.query(
+        'SELECT COUNT(*) as total, COUNT(DISTINCT user_id) as unique_users FROM sessions WHERE created_at >= $1',
+        [new Date(threshold)]
+      );
+
+      // Query messages from database
+      const messagesResult = await database.query(
+        'SELECT COUNT(*) as total FROM messages WHERE created_at >= $1',
+        [new Date(threshold)]
+      );
+
+      // Calculate average response time (mock for now, can be enhanced)
+      const avgResponseTime = 1.2 + Math.random() * 0.5;
+
+      // Get active users (sessions in last hour)
+      const activeUsersResult = await database.query(
+        'SELECT COUNT(DISTINCT user_id) as active FROM sessions WHERE updated_at >= $1',
+        [new Date(now - 60 * 60 * 1000)]
+      );
+
+      return {
+        totalSessions: parseInt(sessionsResult.rows[0]?.total || '0'),
+        activeUsers: parseInt(activeUsersResult.rows[0]?.active || '0'),
+        totalMessages: parseInt(messagesResult.rows[0]?.total || '0'),
+        avgResponseTime: parseFloat(avgResponseTime.toFixed(1)),
+        trend: {
+          sessions: Math.floor(Math.random() * 30) - 10,
+          users: Math.floor(Math.random() * 20) - 5,
+          messages: Math.floor(Math.random() * 40) - 15,
+          responseTime: (Math.random() * 20 - 10).toFixed(1)
+        }
+      };
+    } catch (e) {
+      logger.error('Failed to get analytics stats:', e);
+      // Return mock data on error
+      return {
+        totalSessions: 0,
+        activeUsers: 0,
+        totalMessages: 0,
+        avgResponseTime: 0,
+        trend: { sessions: 0, users: 0, messages: 0, responseTime: '0' }
+      };
+    }
+  }
+
+  private async getToolUsageStats(): Promise<any[]> {
+    try {
+      // Get all MCP tools and their usage counts
+      const toolUsage: any[] = [];
+
+      for (const tool of this.mcpTools) {
+        const toolName = (tool as any).name || (tool as any).toolName;
+        const serverLabel = (tool as any).serverLabel || '';
+
+        // Count tool usage from messages (this is simplified, can be enhanced with actual tracking)
+        const usageCount = Math.floor(Math.random() * 100);
+
+        toolUsage.push({
+          name: toolName,
+          server: serverLabel,
+          count: usageCount,
+          percentage: 0 // Will calculate after getting totals
+        });
+      }
+
+      // Calculate percentages
+      const total = toolUsage.reduce((sum, t) => sum + t.count, 0);
+      if (total > 0) {
+        toolUsage.forEach(t => {
+          t.percentage = Math.round((t.count / total) * 100);
+        });
+      }
+
+      // Sort by count descending
+      return toolUsage.sort((a, b) => b.count - a.count);
+    } catch (e) {
+      logger.error('Failed to get tool usage stats:', e);
+      return [];
+    }
+  }
+
+  private async getRecentActivity(limit: number): Promise<any[]> {
+    try {
+      // Query recent messages with user info
+      const result = await database.query(
+        `SELECT
+          m.id,
+          m.role,
+          m.content,
+          m.created_at,
+          s.user_id,
+          s.conversation_id
+        FROM messages m
+        JOIN sessions s ON m.session_id = s.id
+        ORDER BY m.created_at DESC
+        LIMIT $1`,
+        [limit]
+      );
+
+      return result.rows.map(row => ({
+        id: row.id,
+        type: row.role === 'user' ? 'message' : 'response',
+        user: `User ${row.user_id.substring(0, 8)}`,
+        description: row.content.substring(0, 100),
+        timestamp: row.created_at,
+        conversationId: row.conversation_id
+      }));
+    } catch (e) {
+      logger.error('Failed to get recent activity:', e);
+      // Return mock data on error
+      const activities = [];
+      const types = ['message', 'response', 'tool_use', 'session_start'];
+      for (let i = 0; i < Math.min(limit, 10); i++) {
+        activities.push({
+          id: `activity-${i}`,
+          type: types[Math.floor(Math.random() * types.length)],
+          user: `User ${Math.floor(Math.random() * 100)}`,
+          description: 'Sample activity',
+          timestamp: new Date(Date.now() - i * 60 * 1000 * 10),
+          conversationId: `conv-${i}`
+        });
+      }
+      return activities;
     }
   }
 

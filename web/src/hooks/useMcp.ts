@@ -245,6 +245,36 @@ export const useMcp = () => {
     }
   }, [servers, loadServersAndTools]);
 
+  const toggleTool = useCallback(async (serverId: string, toolName: string) => {
+    try {
+      // Call backend to toggle tool
+      const response = await fetch(`/api/mcp/tools/${encodeURIComponent(serverId)}/${encodeURIComponent(toolName)}/toggle`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle tool');
+      }
+
+      // Update local state
+      setServers(prev => prev.map(server => {
+        if (server.id === serverId) {
+          return {
+            ...server,
+            tools: server.tools.map(tool =>
+              tool.name === toolName
+                ? { ...tool, enabled: !tool.enabled }
+                : tool
+            )
+          };
+        }
+        return server;
+      }));
+    } catch (error) {
+      console.error('Failed to toggle tool:', error);
+    }
+  }, []);
+
   return {
     servers,
     loading,
@@ -254,6 +284,7 @@ export const useMcp = () => {
     disconnectServer,
     addServer,
     setServers,
+    toggleTool,
     refresh: loadServersAndTools
   };
 };
