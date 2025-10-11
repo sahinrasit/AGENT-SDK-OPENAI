@@ -214,37 +214,34 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
         </div>
       </div>
 
-      {/* Compact Tools Section */}
+      {/* Tools List - Always Expanded, Compact Design */}
       {server.tools.length > 0 && (
-        <>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-left hover:bg-gray-50 px-2 py-1 rounded transition-colors"
-          >
-            <span className="text-xs font-medium text-gray-700">
-              Araç Listesi ({server.tools.length})
-            </span>
-            {isExpanded ? (
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-            )}
-          </button>
-
-          {isExpanded && (
-            <div className="mt-2 space-y-1">
-              {server.tools.map((tool) => (
-                <ToolItem
-                  key={tool.name}
-                  tool={tool}
-                  serverId={server.id}
-                  isServerConnected={isConnected}
-                  onToggleTool={onToggleTool}
-                />
-              ))}
-            </div>
-          )}
-        </>
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <div className="flex flex-wrap gap-1.5">
+            {server.tools.map((tool) => (
+              <button
+                key={tool.name}
+                onClick={() => onToggleTool?.(server.id, tool.name)}
+                disabled={!isConnected}
+                className={clsx(
+                  'px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200',
+                  'flex items-center gap-1.5',
+                  tool.enabled
+                    ? 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-300'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-300 line-through',
+                  !isConnected && 'opacity-50 cursor-not-allowed'
+                )}
+                title={tool.description || tool.name}
+              >
+                <div className={clsx(
+                  'w-2 h-2 rounded-full',
+                  tool.enabled ? 'bg-green-500' : 'bg-gray-400'
+                )} />
+                {tool.name}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
