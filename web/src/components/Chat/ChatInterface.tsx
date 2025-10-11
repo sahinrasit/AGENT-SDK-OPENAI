@@ -4,6 +4,7 @@ import { ChatInput } from './ChatInput';
 import { ToolApprovalCard } from './ToolApprovalCard';
 import { Message, AgentType, ChatSession } from '../../types/agent';
 import { Bot } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PendingApproval {
   id: string;
@@ -35,6 +36,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onApproveToolCall,
   onRejectToolCall
 }) => {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>(session.messages);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -56,7 +58,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       {/* Messages */}
       <div
         ref={chatContainerRef}
@@ -65,7 +67,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             {/* Gradient Background Decoration */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 opacity-50"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 opacity-50"></div>
 
             <div className="relative z-10 max-w-3xl">
               {/* Logo and Title */}
@@ -76,23 +78,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
                   AiCoE Asistan
                 </h1>
-                <p className="text-lg text-gray-600 mb-2">
-                  IBTech yapay zeka destekli akıllı asistan
+                <p className="text-lg text-gray-600 dark:text-gray-300 mb-2">
+                  {t('chat.subtitle')}
                 </p>
-                <p className="text-sm text-gray-500">
-                  Yapay zeka destekli akıllı asistanınız hazır!
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {t('chat.ready')}
                 </p>
               </div>
 
               {/* Suggested Prompts */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-                {getSuggestedPrompts(session.agentType).map((prompt, index) => (
+                {getSuggestedPrompts(session.agentType, t).map((prompt, index) => (
                   <button
                     key={index}
                     onClick={() => handleSendMessage(prompt)}
-                    className="group p-4 text-left bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-md transition-all duration-200"
+                    className="group p-4 text-left bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all duration-200"
                   >
-                    <span className="text-sm text-gray-700 group-hover:text-blue-600 transition-colors">
+                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {prompt}
                     </span>
                   </button>
@@ -101,17 +103,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
               {/* Features */}
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-3 bg-white/50 rounded-lg">
+                <div className="p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
                   <div className="text-2xl mb-1">🚀</div>
-                  <div className="text-xs font-medium text-gray-700">Hızlı Yanıtlar</div>
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300">{t('chat.feature.fast')}</div>
                 </div>
-                <div className="p-3 bg-white/50 rounded-lg">
+                <div className="p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
                   <div className="text-2xl mb-1">🎯</div>
-                  <div className="text-xs font-medium text-gray-700">Akıllı Analiz</div>
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300">{t('chat.feature.smart')}</div>
                 </div>
-                <div className="p-3 bg-white/50 rounded-lg">
+                <div className="p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
                   <div className="text-2xl mb-1">🔒</div>
-                  <div className="text-xs font-medium text-gray-700">Güvenli</div>
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300">{t('chat.feature.secure')}</div>
                 </div>
               </div>
             </div>
@@ -130,7 +132,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             {isLoading && !streamingMessageId && (
               <div className="flex gap-3 mb-4 max-w-4xl mr-auto">
                 {/* Avatar */}
-                <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center shadow-sm bg-white border-2 border-gray-200">
+                <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center shadow-sm bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700">
                   <img
                     src="/aicoe.jpeg"
                     alt="AiCoE"
@@ -141,16 +143,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 {/* Thinking bubble */}
                 <div className="flex-1 max-w-[75%]">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="font-semibold text-sm text-gray-800">AiCoE</span>
+                    <span className="font-semibold text-sm text-gray-800 dark:text-white">AiCoE</span>
                   </div>
-                  <div className="inline-block rounded-2xl px-4 py-3 shadow-md bg-white border border-gray-200">
-                    <div className="flex items-center gap-3 text-gray-600">
+                  <div className="inline-block rounded-2xl px-4 py-3 shadow-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
                       <div className="typing-indicator">
                         <div className="typing-dot"></div>
                         <div className="typing-dot"></div>
                         <div className="typing-dot"></div>
                       </div>
-                      <span className="text-sm">Düşünüyor...</span>
+                      <span className="text-sm">{t('chat.thinking')}</span>
                     </div>
                   </div>
                 </div>
@@ -185,49 +187,49 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         onStopGeneration={onStopGeneration}
         isLoading={isLoading}
         disabled={!isConnected}
-        placeholder="AiCoE Asistan'a mesaj gönderin..."
+        placeholder={t('chat.placeholder')}
       />
     </div>
   );
 };
 
-function getSuggestedPrompts(agentType: AgentType): string[] {
+function getSuggestedPrompts(agentType: AgentType, t: (key: string) => string): string[] {
   switch (agentType) {
     case 'planner':
       return [
-        "Yapay zeka trendleri için bir araştırma planı oluşturmama yardım et",
-        "Rekabet analizi yapmak için en iyi yaklaşım nedir?",
-        "Yenilenebilir enerji teknolojileri hakkında kapsamlı bir çalışma planla"
+        t('chat.prompt.planner.1'),
+        t('chat.prompt.planner.2'),
+        t('chat.prompt.planner.3')
       ];
     case 'search':
       return [
-        "Kuantum bilişimdeki son gelişmeleri ara",
-        "Sürdürülebilir iş uygulamaları hakkında bilgi bul",
-        "Uzaktan çalışma teknolojilerindeki güncel trendleri araştır"
+        t('chat.prompt.search.1'),
+        t('chat.prompt.search.2'),
+        t('chat.prompt.search.3')
       ];
     case 'writer':
       return [
-        "Dijital dönüşüm hakkında kapsamlı bir rapor yaz",
-        "Pazar araştırması bulgularının yönetici özeti oluştur",
-        "Yeni API'miz için teknik dokümantasyon hazırla"
+        t('chat.prompt.writer.1'),
+        t('chat.prompt.writer.2'),
+        t('chat.prompt.writer.3')
       ];
     case 'triage':
       return [
-        "Karmaşık bir araştırma projesinde yardıma ihtiyacım var",
-        "Bazı iş verilerini analiz edebilir misin?",
-        "Pazar trendleri hakkında detaylı bir rapor oluşturmak istiyorum"
+        t('chat.prompt.triage.1'),
+        t('chat.prompt.triage.2'),
+        t('chat.prompt.triage.3')
       ];
     case 'customer-service':
       return [
-        "Faturalandırma hakkında bir sorum var",
-        "Teknik sorunlar yaşıyorum",
-        "Hizmetlerinizi anlamama yardımcı olabilir misiniz?"
+        t('chat.prompt.cs.1'),
+        t('chat.prompt.cs.2'),
+        t('chat.prompt.cs.3')
       ];
     default:
       return [
-        "Bugün size nasıl yardımcı olabilirim?",
-        "Yetenekleriniz nelerdir?",
-        "Özelliklerinizden bahseder misiniz?"
+        t('chat.prompt.help'),
+        t('chat.prompt.capabilities'),
+        t('chat.prompt.features')
       ];
   }
 }

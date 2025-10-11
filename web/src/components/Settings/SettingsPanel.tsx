@@ -13,12 +13,14 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface SettingsPanelProps {}
 
 type SettingsTab = 'general' | 'api' | 'notifications' | 'security' | 'appearance';
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [loading, setLoading] = useState(true);
@@ -89,11 +91,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
   };
 
   const tabs = [
-    { id: 'general', name: 'Genel', icon: Settings },
-    { id: 'api', name: 'API Ayarları', icon: Key },
-    { id: 'notifications', name: 'Bildirimler', icon: Bell },
-    { id: 'security', name: 'Güvenlik', icon: Shield },
-    { id: 'appearance', name: 'Görünüm', icon: Palette }
+    { id: 'general', name: t('settings.general'), icon: Settings },
+    { id: 'api', name: t('settings.api'), icon: Key },
+    { id: 'notifications', name: t('settings.notifications'), icon: Bell },
+    { id: 'security', name: t('settings.security'), icon: Shield },
+    { id: 'appearance', name: t('settings.appearance'), icon: Palette }
   ];
 
   const handleSave = async () => {
@@ -179,13 +181,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
         return (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Dil
               </label>
               <select
                 value={settings.language}
                 onChange={(e) => setSettings({ ...settings, language: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="tr">Türkçe</option>
                 <option value="en">English</option>
@@ -193,13 +195,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Saat Dilimi
               </label>
               <select
                 value={settings.timezone}
                 onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="Europe/Istanbul">Europe/Istanbul (GMT+3)</option>
                 <option value="UTC">UTC (GMT+0)</option>
@@ -207,16 +209,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
               </select>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div>
-                <h4 className="font-medium text-gray-900">Otomatik Kaydetme</h4>
-                <p className="text-sm text-gray-600">Değişiklikleri otomatik olarak kaydet</p>
+                <h4 className="font-medium text-gray-900 dark:text-white">Otomatik Kaydetme</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Değişiklikleri otomatik olarak kaydet</p>
               </div>
               <button
                 onClick={() => setSettings({ ...settings, autoSave: !settings.autoSave })}
                 className={clsx(
                   'w-12 h-6 rounded-full relative transition-colors',
-                  settings.autoSave ? 'bg-green-600' : 'bg-gray-300'
+                  settings.autoSave ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
                 )}
               >
                 <div className={clsx(
@@ -232,53 +234,53 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
         return (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 OpenAI API Key
               </label>
               <input
                 type="password"
                 value={settings.openaiApiKey}
                 onChange={(e) => setSettings({ ...settings, openaiApiKey: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                className="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
                 placeholder="sk-..."
               />
-              <p className="text-xs text-gray-500 mt-1">API anahtarınız güvenli bir şekilde saklanır</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">API anahtarınız güvenli bir şekilde saklanır</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 API Timeout (saniye)
               </label>
               <input
                 type="number"
                 value={settings.apiTimeout}
                 onChange={(e) => setSettings({ ...settings, apiTimeout: parseInt(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="5"
                 max="120"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Maksimum Tekrar Denemesi
               </label>
               <input
                 type="number"
                 value={settings.maxRetries}
                 onChange={(e) => setSettings({ ...settings, maxRetries: parseInt(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="0"
                 max="10"
               />
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-blue-900">API Durumu</h4>
-                  <p className="text-sm text-blue-700 mt-1">Bağlantı aktif ve çalışıyor</p>
+                  <h4 className="font-medium text-blue-900 dark:text-blue-300">API Durumu</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">Bağlantı aktif ve çalışıyor</p>
                 </div>
               </div>
             </div>
@@ -288,16 +290,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
       case 'notifications':
         return (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div>
-                <h4 className="font-medium text-gray-900">E-posta Bildirimleri</h4>
-                <p className="text-sm text-gray-600">Önemli olaylar için e-posta gönder</p>
+                <h4 className="font-medium text-gray-900 dark:text-white">E-posta Bildirimleri</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Önemli olaylar için e-posta gönder</p>
               </div>
               <button
                 onClick={() => setSettings({ ...settings, emailNotifications: !settings.emailNotifications })}
                 className={clsx(
                   'w-12 h-6 rounded-full relative transition-colors',
-                  settings.emailNotifications ? 'bg-green-600' : 'bg-gray-300'
+                  settings.emailNotifications ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
                 )}
               >
                 <div className={clsx(
@@ -307,16 +309,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
               </button>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div>
-                <h4 className="font-medium text-gray-900">Masaüstü Bildirimleri</h4>
-                <p className="text-sm text-gray-600">Tarayıcı bildirimlerini etkinleştir</p>
+                <h4 className="font-medium text-gray-900 dark:text-white">Masaüstü Bildirimleri</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Tarayıcı bildirimlerini etkinleştir</p>
               </div>
               <button
                 onClick={() => setSettings({ ...settings, desktopNotifications: !settings.desktopNotifications })}
                 className={clsx(
                   'w-12 h-6 rounded-full relative transition-colors',
-                  settings.desktopNotifications ? 'bg-green-600' : 'bg-gray-300'
+                  settings.desktopNotifications ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
                 )}
               >
                 <div className={clsx(
@@ -326,16 +328,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
               </button>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div>
-                <h4 className="font-medium text-gray-900">Oturum Uyarıları</h4>
-                <p className="text-sm text-gray-600">Oturum olayları için bildirim al</p>
+                <h4 className="font-medium text-gray-900 dark:text-white">Oturum Uyarıları</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Oturum olayları için bildirim al</p>
               </div>
               <button
                 onClick={() => setSettings({ ...settings, sessionAlerts: !settings.sessionAlerts })}
                 className={clsx(
                   'w-12 h-6 rounded-full relative transition-colors',
-                  settings.sessionAlerts ? 'bg-green-600' : 'bg-gray-300'
+                  settings.sessionAlerts ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
                 )}
               >
                 <div className={clsx(
@@ -350,16 +352,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
       case 'security':
         return (
           <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div>
-                <h4 className="font-medium text-gray-900">İki Faktörlü Kimlik Doğrulama</h4>
-                <p className="text-sm text-gray-600">Ekstra güvenlik katmanı ekle</p>
+                <h4 className="font-medium text-gray-900 dark:text-white">İki Faktörlü Kimlik Doğrulama</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Ekstra güvenlik katmanı ekle</p>
               </div>
               <button
                 onClick={() => setSettings({ ...settings, twoFactorAuth: !settings.twoFactorAuth })}
                 className={clsx(
                   'w-12 h-6 rounded-full relative transition-colors',
-                  settings.twoFactorAuth ? 'bg-green-600' : 'bg-gray-300'
+                  settings.twoFactorAuth ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
                 )}
               >
                 <div className={clsx(
@@ -370,31 +372,31 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Oturum Zaman Aşımı (dakika)
               </label>
               <input
                 type="number"
                 value={settings.sessionTimeout}
                 onChange={(e) => setSettings({ ...settings, sessionTimeout: parseInt(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="5"
                 max="1440"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 IP Beyaz Listesi
               </label>
               <textarea
                 value={settings.ipWhitelist}
                 onChange={(e) => setSettings({ ...settings, ipWhitelist: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                className="w-full px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
                 rows={4}
                 placeholder="192.168.1.1&#10;10.0.0.0/8"
               />
-              <p className="text-xs text-gray-500 mt-1">Her satıra bir IP adresi veya CIDR bloğu</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Her satıra bir IP adresi veya CIDR bloğu</p>
             </div>
           </div>
         );
@@ -403,7 +405,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
         return (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Tema
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -412,38 +414,38 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
                   className={clsx(
                     'p-4 rounded-lg border-2 transition-all',
                     settings.theme === 'light'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                   )}
                 >
                   <div className="w-full h-20 bg-white rounded border border-gray-200 mb-2"></div>
-                  <p className="text-sm font-medium">Açık Tema</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Açık Tema</p>
                 </button>
                 <button
                   onClick={() => setSettings({ ...settings, theme: 'dark' })}
                   className={clsx(
                     'p-4 rounded-lg border-2 transition-all',
                     settings.theme === 'dark'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                   )}
                 >
                   <div className="w-full h-20 bg-gray-800 rounded border border-gray-700 mb-2"></div>
-                  <p className="text-sm font-medium">Koyu Tema</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Koyu Tema</p>
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div>
-                <h4 className="font-medium text-gray-900">Kompakt Mod</h4>
-                <p className="text-sm text-gray-600">Daha fazla içerik göster</p>
+                <h4 className="font-medium text-gray-900 dark:text-white">Kompakt Mod</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Daha fazla içerik göster</p>
               </div>
               <button
                 onClick={() => setSettings({ ...settings, compactMode: !settings.compactMode })}
                 className={clsx(
                   'w-12 h-6 rounded-full relative transition-colors',
-                  settings.compactMode ? 'bg-green-600' : 'bg-gray-300'
+                  settings.compactMode ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
                 )}
               >
                 <div className={clsx(
@@ -453,16 +455,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
               </button>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div>
-                <h4 className="font-medium text-gray-900">Animasyonlar</h4>
-                <p className="text-sm text-gray-600">Geçiş animasyonlarını göster</p>
+                <h4 className="font-medium text-gray-900 dark:text-white">Animasyonlar</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Geçiş animasyonlarını göster</p>
               </div>
               <button
                 onClick={() => setSettings({ ...settings, animations: !settings.animations })}
                 className={clsx(
                   'w-12 h-6 rounded-full relative transition-colors',
-                  settings.animations ? 'bg-green-600' : 'bg-gray-300'
+                  settings.animations ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
                 )}
               >
                 <div className={clsx(
@@ -480,18 +482,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Ayarlar</h1>
-            <p className="text-sm text-gray-600 mt-1">Sistem yapılandırması ve kullanıcı tercihleri</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ayarlar</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Sistem yapılandırması ve kullanıcı tercihleri</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
               Sıfırla
@@ -531,7 +533,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+        <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
           <nav className="p-4 space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -542,8 +544,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
                   className={clsx(
                     'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left',
                     activeTab === tab.id
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                   )}
                 >
                   <Icon className="w-5 h-5" />
@@ -555,11 +557,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-900">
           <div className="max-w-3xl">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+                <RefreshCw className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
               </div>
             ) : (
               renderTabContent()

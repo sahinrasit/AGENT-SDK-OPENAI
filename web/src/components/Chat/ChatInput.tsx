@@ -60,7 +60,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const canSend = message.trim().length > 0 && !disabled && !isLoading;
 
   return (
-    <div className="border-t border-gray-200 bg-white p-4">
+    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
         <div className="relative flex items-end gap-3">
           {/* Voice recording button */}
@@ -72,8 +72,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               'flex-shrink-0 p-3 rounded-full transition-all duration-200',
               'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500',
               isRecording
-                ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600',
               disabled && 'opacity-50 cursor-not-allowed'
             )}
           >
@@ -95,11 +95,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               disabled={disabled}
               rows={1}
               className={clsx(
-                'w-full px-4 py-3 pr-12 rounded-2xl border border-gray-300',
+                'w-full px-4 py-3 pr-12 rounded-2xl border',
+                'border-gray-300 dark:border-gray-600',
+                'bg-white dark:bg-gray-900',
+                'text-gray-900 dark:text-white',
+                'placeholder-gray-500 dark:placeholder-gray-400',
                 'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
                 'resize-none scrollbar-thin',
-                'placeholder-gray-500 text-gray-900',
-                disabled && 'bg-gray-50 cursor-not-allowed'
+                disabled && 'bg-gray-50 dark:bg-gray-800 cursor-not-allowed'
               )}
               style={{
                 minHeight: '48px',
@@ -109,7 +112,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
             {/* Character count */}
             {message.length > 0 && (
-              <div className="absolute bottom-1 right-14 text-xs text-gray-400">
+              <div className="absolute bottom-1 right-14 text-xs text-gray-400 dark:text-gray-500">
                 {message.length}
               </div>
             )}
@@ -134,7 +137,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500',
                 canSend
                   ? 'bg-primary-600 text-white hover:bg-primary-700'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
               )}
               title="Mesaj gönder"
             >
@@ -145,14 +148,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
         {/* Recording indicator */}
         {isRecording && (
-          <div className="flex items-center justify-center mt-3 text-red-600">
-            <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse mr-2"></div>
+          <div className="flex items-center justify-center mt-3 text-red-600 dark:text-red-400">
+            <div className="w-3 h-3 bg-red-600 dark:bg-red-400 rounded-full animate-pulse mr-2"></div>
             <span className="text-sm font-medium">Kaydediliyor...</span>
           </div>
         )}
 
         {/* Quick actions */}
-        <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
+        <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
           <div className="flex items-center gap-4">
             <span>Göndermek için Enter, yeni satır için Shift+Enter</span>
           </div>

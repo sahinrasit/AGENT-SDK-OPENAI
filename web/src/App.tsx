@@ -7,6 +7,9 @@ import { useChat } from './hooks/useChat';
 import { AgentType, MCPServer } from './types/agent';
 import { useMcp } from './hooks/useMcp';
 import SessionList from './components/SessionList';
+import { Clock } from './components/common/Clock';
+import { useTheme } from './contexts/ThemeContext';
+import { useLanguage } from './contexts/LanguageContext';
 import {
   MessageSquare,
   Database,
@@ -18,7 +21,10 @@ import {
   Bot,
   Boxes,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Sun,
+  Moon,
+  Globe
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -33,6 +39,8 @@ function App() {
   const [sessionsExpanded, setSessionsExpanded] = useState(true); // Sessions section expand/collapse
   const [activeSessionId, setActiveSessionId] = useState<string>();
   const { servers: mcpServers, addServer, disconnectServer, toggleTool } = useMcp();
+  const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   // Simple SPA routing without external deps
   const mapViewToPath = (view: ViewType): string => {
     switch (view) {
@@ -83,10 +91,10 @@ function App() {
   });
 
   const navigation = [
-    { id: 'mcp', name: 'MCP Sunucular', icon: Database, view: 'mcp' as ViewType },
-    { id: 'agents', name: 'Ajanlar', icon: Users, view: 'agents' as ViewType },
-    { id: 'analytics', name: 'Analitik', icon: Activity, view: 'analytics' as ViewType },
-    { id: 'settings', name: 'Ayarlar', icon: Settings, view: 'settings' as ViewType },
+    { id: 'mcp', name: t('nav.mcp'), icon: Database, view: 'mcp' as ViewType },
+    { id: 'agents', name: language === 'tr' ? 'Ajanlar' : 'Agents', icon: Users, view: 'agents' as ViewType },
+    { id: 'analytics', name: t('nav.analytics'), icon: Activity, view: 'analytics' as ViewType },
+    { id: 'settings', name: t('nav.settings'), icon: Settings, view: 'settings' as ViewType },
   ];
 
   const agentTypes: { type: AgentType; name: string; description: string }[] = [
@@ -142,16 +150,16 @@ function App() {
         // Show welcome screen if no session selected
         if (!activeSessionId) {
           return (
-            <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
               <div className="text-center max-w-2xl px-8">
-                <Bot className="w-20 h-20 text-blue-500 mx-auto mb-6" />
-                <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                <Bot className="w-20 h-20 text-blue-500 dark:text-blue-400 mx-auto mb-6" />
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
                   IBTech AI Agent Platform'a Hoş Geldiniz
                 </h2>
-                <p className="text-lg text-gray-600 mb-8">
+                <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
                   Başlamak için sol taraftan bir sohbet seçin veya yeni bir sohbet başlatın
                 </p>
-                <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center justify-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                   <span className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     OpenAI Agents SDK
@@ -168,13 +176,13 @@ function App() {
 
         // Show loading if session is being loaded
         return (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900">
             <div className="text-center">
-              <Bot className="w-16 h-16 text-gray-300 mx-auto mb-4 animate-pulse" />
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              <Bot className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4 animate-pulse" />
+              <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Sohbet Yükleniyor
               </h3>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-400">
                 {chat.isConnected ? 'Konuşmanız hazırlanıyor...' : 'Sunucuya bağlanılıyor...'}
               </p>
             </div>
@@ -199,16 +207,16 @@ function App() {
 
       case 'agents':
         return (
-          <div className="p-6 bg-gray-50 h-full overflow-y-auto">
+          <div className="p-6 bg-gray-50 dark:bg-gray-900 h-full overflow-y-auto">
             <div className="max-w-5xl mx-auto">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
                     <Users className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Yapay Zeka Ajanları</h2>
-                    <p className="text-sm text-gray-600">Farklı görevler için özelleştirilmiş ajanları seçin</p>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Yapay Zeka Ajanları</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Farklı görevler için özelleştirilmiş ajanları seçin</p>
                   </div>
                 </div>
               </div>
@@ -218,10 +226,10 @@ function App() {
                   <div
                     key={agent.type}
                     className={clsx(
-                      'bg-white rounded-xl border-2 cursor-pointer transition-all duration-200 overflow-hidden',
+                      'bg-white dark:bg-gray-800 rounded-xl border-2 cursor-pointer transition-all duration-200 overflow-hidden',
                       selectedAgentType === agent.type
                         ? 'border-blue-500 shadow-lg scale-[1.02]'
-                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'
                     )}
                     onClick={() => setSelectedAgentType(agent.type)}
                   >
@@ -230,7 +238,7 @@ function App() {
                         'w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0',
                         selectedAgentType === agent.type
                           ? 'bg-gradient-to-br from-blue-600 to-purple-600'
-                          : 'bg-gray-100'
+                          : 'bg-gray-100 dark:bg-gray-700'
                       )}>
                         <img
                           src="/aicoe.jpeg"
@@ -239,11 +247,11 @@ function App() {
                         />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 text-lg">{agent.name}</h3>
-                        <p className="text-gray-600 text-sm">{agent.description}</p>
+                        <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{agent.name}</h3>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">{agent.description}</p>
                       </div>
                       {selectedAgentType === agent.type && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
                           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                           Aktif
                         </div>
@@ -309,9 +317,9 @@ function App() {
   const agentInfo = getAgentInfo(selectedAgentType);
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
       {/* Fixed Header - Above everything */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 border-b border-blue-700 px-6 py-4 shadow-lg z-50">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-gray-800 dark:to-gray-900 border-b border-blue-700 dark:border-gray-700 px-6 py-4 shadow-lg z-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             {/* Logos */}
@@ -381,6 +389,35 @@ function App() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Clock */}
+            <Clock className="text-white" showDate={false} />
+
+            {/* Language Selector */}
+            <button
+              onClick={() => setLanguage(language === 'tr' ? 'en' : 'tr')}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
+              title="Change Language / Dil Değiştir"
+            >
+              <Globe className="w-4 h-4 text-white" />
+              <span className="text-sm text-white font-medium">{language.toUpperCase()}</span>
+            </button>
+
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={() => {
+                console.log('[App] Dark mode button clicked, current theme:', theme);
+                toggleTheme();
+              }}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors"
+              title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-yellow-300" />
+              ) : (
+                <Moon className="w-5 h-5 text-white" />
+              )}
+            </button>
+
             {/* Connection status */}
             <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full">
               <div className={clsx(
@@ -436,25 +473,25 @@ function App() {
       <div className="flex-1 flex overflow-hidden">
         {/* Unified Sidebar - Always visible unless collapsed */}
         {!sidebarCollapsed && (
-          <div className="bg-white border-r border-gray-200 w-64 flex-shrink-0 flex flex-col">
+          <div className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 w-64 flex-shrink-0 flex flex-col">
             {/* Collapse Button */}
-            <div className="border-b border-gray-200 p-2">
+            <div className="border-b border-gray-200 dark:border-gray-700 p-2">
               <button
                 onClick={() => setSidebarCollapsed(true)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span className="text-sm">Daralt</span>
+                <span className="text-sm">{language === 'tr' ? 'Daralt' : 'Collapse'}</span>
               </button>
             </div>
 
             {/* Sessions Section - Collapsible */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setSessionsExpanded(!sessionsExpanded)}
-                className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
-                <span className="text-sm font-semibold">Sohbetler</span>
+                <span className="text-sm font-semibold">{language === 'tr' ? 'Sohbetler' : 'Chats'}</span>
                 {sessionsExpanded ? (
                   <ChevronLeft className="w-4 h-4 rotate-90" />
                 ) : (
@@ -475,7 +512,7 @@ function App() {
 
             {/* Navigation Menu */}
             <nav className="flex-1 px-4 py-4 overflow-y-auto">
-              <div className="text-xs font-semibold text-gray-500 px-2 mb-2">MENÜ</div>
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-2 mb-2">{language === 'tr' ? 'MENÜ' : 'MENU'}</div>
               <ul className="space-y-1">
                 {navigation.map((item) => {
                   const Icon = item.icon;
@@ -486,8 +523,8 @@ function App() {
                         className={clsx(
                           'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors duration-200',
                           currentView === item.view
-                            ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 font-medium'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                            ? 'bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         )}
                       >
                         <Icon className="w-5 h-5" />
@@ -500,14 +537,14 @@ function App() {
             </nav>
 
             {/* Footer */}
-            <div className="p-4 border-t border-gray-200">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col items-center gap-2">
                 <img
                   src="/ibtech.jpeg"
                   alt="IBTech"
                   className="h-6 object-contain"
                 />
-                <div className="text-xs text-gray-500 text-center">
+                <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
                   OpenAI Agents SDK v0.1.9
                 </div>
               </div>
@@ -517,11 +554,11 @@ function App() {
 
         {/* Collapsed Sidebar - Show expand button */}
         {sidebarCollapsed && (
-          <div className="bg-white border-r border-gray-200 w-12 flex-shrink-0 flex flex-col items-center py-2">
+          <div className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 w-12 flex-shrink-0 flex flex-col items-center py-2">
             <button
               onClick={() => setSidebarCollapsed(false)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Genişlet"
+              className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={language === 'tr' ? 'Genişlet' : 'Expand'}
             >
               <ChevronRight className="w-5 h-5" />
             </button>
